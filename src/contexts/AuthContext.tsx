@@ -36,8 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSdkReady, setSdkReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoTriedRef = useRef(false);
+  const inFlightRef = useRef(false);
 
-  // Hydrate from storage + init the SDK.
+  // Hydrate from storage + init the SDK. Never stay stuck on "Loading Pi SDK…".
   useEffect(() => {
     const existing = getCurrentUser();
     if (existing) {
@@ -46,13 +47,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setStatus("unauthenticated");
     }
+    let cancelled = false;
     initializePi()
-      .then(() => setSdkReady(true))
-      .catch(() => setSdkReady(false));
+      .then(() => {
+        if (!cancelled) setSdkReady(true);
+      })
+      .catch(() => {
+        // Mark ready so the button is usable; signIn() will surface a clear error.
+        if (!cancelled) setSdkReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const signIn = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setError(null);
+    setStatus("loading");
     try {
       const next = await authenticatePi();
       setUser(next);
@@ -60,12 +73,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const code = (err as Error).message || "AUTH_FAILED";
       setError(describeAuthError(code));
+      setUser(null);
       setStatus("unauthenticated");
+    } finally {
+      inFlightRef.current = false;
     }
   }, []);
 
   const signOut = useCallback(() => {
     logoutPi();
+    inFlightRef.current = false;
+    autoTriedRef.current = false;
+    setError(null);
     setUser(null);
     setStatus("unauthenticated");
   }, []);

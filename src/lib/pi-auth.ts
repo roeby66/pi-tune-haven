@@ -11,8 +11,8 @@ export interface PiUser {
 
 export type PiAuthScope = "username" | "payments" | "wallet_address";
 
-// Scopes prepared for future Pi payments / wallet features.
-const DEFAULT_SCOPES: PiAuthScope[] = ["username", "payments"];
+// Keep scopes minimal — payments will be added later with the reward system.
+const DEFAULT_SCOPES: PiAuthScope[] = ["username"];
 
 interface PiAuthResult {
   accessToken: string;
@@ -20,7 +20,7 @@ interface PiAuthResult {
 }
 
 interface PiSDK {
-  init: (config: { version: string; sandbox?: boolean }) => Promise<void>;
+  init: (config: { version: string; sandbox?: boolean }) => Promise<void> | void;
   authenticate: (
     scopes: PiAuthScope[],
     onIncompletePaymentFound: (payment: unknown) => void,
@@ -38,9 +38,13 @@ const STORAGE_KEY = "mypimusic.pi_user";
 let initPromise: Promise<void> | null = null;
 
 export function isPiBrowser(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  return /PiBrowser/i.test(ua);
+  if (typeof window === "undefined") return false;
+  // Pi Browser does not always expose "PiBrowser" in the UA string.
+  // Treat the presence of window.Pi as the authoritative signal, and
+  // fall back to UA hints for older builds.
+  if (typeof window.Pi !== "undefined") return true;
+  const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+  return /PiBrowser|Pi Network|minepi/i.test(ua);
 }
 
 function waitForPiSdk(timeoutMs = 8000): Promise<PiSDK> {
@@ -69,11 +73,23 @@ function waitForPiSdk(timeoutMs = 8000): Promise<PiSDK> {
 export async function initializePi(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    const Pi = await waitForPiSdk();
-    // Sandbox is enabled outside Pi Browser so dev/preview works without crashing.
-    await Pi.init({ version: "2.0", sandbox: !isPiBrowser() });
+    try {
+      const Pi = await waitForPiSdk();
+      // Sandbox enabled outside Pi Browser so preview/dev does not crash.
+      await Promise.resolve(
+        Pi.init({ version: "2.0", sandbox: !isPiBrowser() }),
+      );
+    } catch (err) {
+      // Allow re-init attempts after failure.
+      initPromise = null;
+      throw err;
+    }
   })();
   return initPromise;
+}
+
+export function resetPiInit(): void {
+  initPromise = null;
 }
 
 function onIncompletePaymentFound(payment: unknown) {
@@ -95,6 +111,8 @@ export async function authenticatePi(): Promise<PiUser> {
     if (message.includes("network")) throw new Error("NETWORK_ERROR");
     throw new Error("AUTH_FAILED");
   }
+
+  if (!result?.user?.uid) throw new Error("AUTH_FAILED");
 
   const user: PiUser = {
     uid: result.user.uid,
@@ -135,7 +153,7 @@ export function describeAuthError(code: string): string {
     case "PI_BROWSER_REQUIRED":
       return "For the best experience, please open MyPiMusic inside the Pi Browser.";
     case "SDK_UNAVAILABLE":
-      return "Pi Network SDK is not available. Open this app inside the Pi Browser.";
+      return "Pi Network SDK is not available. Please open this app inside the Pi Browser and try again.";
     case "AUTH_CANCELLED":
       return "Sign-in was cancelled. Tap the button again to continue.";
     case "NETWORK_ERROR":
