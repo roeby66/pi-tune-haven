@@ -15,6 +15,7 @@ import {
   initializePi,
   isPiBrowser,
   logoutPi,
+  resetPiInit,
   type PiUser,
 } from "@/lib/pi-auth";
 
