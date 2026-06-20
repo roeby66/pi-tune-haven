@@ -15,6 +15,7 @@ import {
   initializePi,
   isPiBrowser,
   logoutPi,
+  resetPiInit,
   type PiUser,
 } from "@/lib/pi-auth";
 
@@ -82,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     logoutPi();
+    resetPiInit();
     inFlightRef.current = false;
     autoTriedRef.current = false;
     setError(null);
