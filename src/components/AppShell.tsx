@@ -1,0 +1,74 @@
+import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Compass, Heart, Home, ListMusic, Mic2, User } from "lucide-react";
+import { MusicPlayer } from "./MusicPlayer";
+import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
+import { useAuth } from "@/contexts/AuthContext";
+
+const NAV = [
+  { to: "/home", label: "Home", icon: Home },
+  { to: "/discover", label: "Discover", icon: Compass },
+  { to: "/artists", label: "Artists", icon: Mic2 },
+  { to: "/playlists", label: "Playlists", icon: ListMusic },
+  { to: "/favorites", label: "Favorites", icon: Heart },
+  { to: "/profile", label: "Profile", icon: User },
+] as const;
+
+export function AppShell() {
+  const { user } = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background pb-40">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <Link to="/home" className="flex items-center gap-2">
+            <img src={logoAsset.url} alt="MyPiMusic" className="h-9 w-9 rounded-lg object-cover" />
+            <div className="leading-tight">
+              <p className="text-sm font-bold">
+                My<span className="text-primary">Pi</span>Music
+              </p>
+              <p className="text-[10px] text-muted-foreground">Music · Community · Pi</p>
+            </div>
+          </Link>
+          {user && (
+            <Link
+              to="/profile"
+              className="flex items-center gap-2 rounded-full border border-white/10 bg-card/70 px-3 py-1.5 text-xs"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold">
+                {user.username.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="font-medium">@{user.username}</span>
+            </Link>
+          )}
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-5">
+        <Outlet />
+      </main>
+
+      <MusicPlayer />
+
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/95 backdrop-blur md:hidden">
+        <div className="mx-auto grid max-w-5xl grid-cols-6">
+          {NAV.map(({ to, label, icon: Icon }) => {
+            const active = pathname === to || (to !== "/home" && pathname.startsWith(to));
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
+                  active ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </div>
+  );
+}
