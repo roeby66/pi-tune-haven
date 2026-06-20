@@ -48,6 +48,22 @@ export function AppShell() {
         <Outlet />
       </main>
 
+      {/* Footer */}
+      <footer className="border-t border-white/10 bg-background/80 pb-28 pt-6 text-center md:pb-6">
+        <div className="mx-auto max-w-5xl px-4">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
+            <span>MyPiMusic &copy; {new Date().getFullYear()}</span>
+            <span className="hidden sm:inline">·</span>
+            <a href="/terms" className="hover:text-foreground hover:underline underline-offset-2">Terms of Service</a>
+            <span className="hidden sm:inline">·</span>
+            <a href="/privacy" className="hover:text-foreground hover:underline underline-offset-2">Privacy Policy</a>
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground/60">
+            Independent third-party app. Not affiliated with Pi Network or Pi Core Team.
+          </p>
+        </div>
+      </footer>
+
       <MusicPlayer />
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/95 backdrop-blur md:hidden">
