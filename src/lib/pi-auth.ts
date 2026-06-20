@@ -47,7 +47,38 @@ export function isPiBrowser(): boolean {
   return /PiBrowser|Pi Network|minepi/i.test(ua);
 }
 
-function waitForPiSdk(timeoutMs = 8000): Promise<PiSDK> {
+const SDK_URL = "https://sdk.minepi.com/pi-sdk.js";
+
+function injectPiSdkScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof document === "undefined") {
+      reject(new Error("SDK_UNAVAILABLE"));
+      return;
+    }
+    if (window.Pi) return resolve();
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${SDK_URL}"]`,
+    );
+    if (existing) {
+      if (window.Pi) return resolve();
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("SDK_LOAD_FAILED")),
+        { once: true },
+      );
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = SDK_URL;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("SDK_LOAD_FAILED"));
+    document.head.appendChild(script);
+  });
+}
+
+function waitForPiSdk(timeoutMs = 10000): Promise<PiSDK> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") {
       reject(new Error("SDK_UNAVAILABLE"));
@@ -66,7 +97,7 @@ function waitForPiSdk(timeoutMs = 8000): Promise<PiSDK> {
         window.clearInterval(id);
         reject(new Error("SDK_UNAVAILABLE"));
       }
-    }, 100);
+    }, 80);
   });
 }
 
@@ -74,13 +105,17 @@ export async function initializePi(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     try {
+      // Inject the SDK ourselves to get reliable load/error signals
+      // even if TanStack's <Scripts /> placement is delayed.
+      await injectPiSdkScript().catch(() => {
+        /* may already exist — fall through to polling */
+      });
       const Pi = await waitForPiSdk();
       // Sandbox enabled outside Pi Browser so preview/dev does not crash.
       await Promise.resolve(
         Pi.init({ version: "2.0", sandbox: !isPiBrowser() }),
       );
     } catch (err) {
-      // Allow re-init attempts after failure.
       initPromise = null;
       throw err;
     }

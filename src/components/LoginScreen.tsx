@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 import { Loader2, ShieldCheck, Sparkles, Music2 } from "lucide-react";
@@ -5,6 +6,8 @@ import { Loader2, ShieldCheck, Sparkles, Music2 } from "lucide-react";
 export function LoginScreen() {
   const { signIn, status, error, isPiBrowser, isSdkReady } = useAuth();
   const loading = status === "loading";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
@@ -51,7 +54,7 @@ export function LoginScreen() {
             <button
               type="button"
               onClick={() => void signIn()}
-              disabled={loading || !isSdkReady}
+              disabled={loading || (mounted && !isSdkReady)}
               className="group relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[oklch(0.86_0.17_90)] to-[oklch(0.72_0.18_60)] px-5 py-3.5 text-base font-semibold text-primary-foreground shadow-gold transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
@@ -64,19 +67,19 @@ export function LoginScreen() {
               Sign in with Pi Network
             </button>
 
-            {!isSdkReady && !error && (
+            {mounted && !isSdkReady && !error && (
               <p className="mt-3 text-center text-xs text-muted-foreground">
                 Loading Pi SDK…
               </p>
             )}
 
-            {error && (
+            {mounted && error && (
               <p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs text-destructive-foreground">
                 {error}
               </p>
             )}
 
-            {!isPiBrowser && (
+            {mounted && !isPiBrowser && (
               <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
                 For full features, open this app inside the{" "}
                 <span className="font-semibold text-foreground">Pi Browser</span>.
