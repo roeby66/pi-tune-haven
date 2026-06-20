@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 import { Loader2, ShieldCheck, Sparkles, Music2 } from "lucide-react";
@@ -5,6 +6,8 @@ import { Loader2, ShieldCheck, Sparkles, Music2 } from "lucide-react";
 export function LoginScreen() {
   const { signIn, status, error, isPiBrowser, isSdkReady } = useAuth();
   const loading = status === "loading";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
