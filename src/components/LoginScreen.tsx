@@ -35,8 +35,8 @@ export function LoginScreen() {
               Welcome to <span className="text-gradient-gold">MyPiMusic</span>
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              The music streaming &amp; promotion platform built exclusively for Pi
-              Network Pioneers.
+              The music streaming &amp; promotion platform built exclusively for Pi Network
+              Pioneers.
             </p>
           </div>
 
@@ -87,36 +87,28 @@ export function LoginScreen() {
 
             {mounted && (
               <div className="mt-4 rounded-lg border border-white/10 bg-background/60 p-3 text-left text-[11px] font-mono leading-relaxed text-muted-foreground">
-                <div className="mb-1 font-semibold text-foreground">
-                  Pi Auth Debug
-                </div>
+                <div className="mb-1 font-semibold text-foreground">Pi Auth Debug</div>
                 <div>
-                  Pi SDK loaded: {" "}
+                  Pi SDK loaded:{" "}
                   <span className={debug.sdkLoaded ? "text-primary" : "text-destructive"}>
                     {String(debug.sdkLoaded)}
                   </span>
                 </div>
                 <div>
-                  Pi.init completed: {" "}
-                  <span
-                    className={debug.initCompleted ? "text-primary" : "text-destructive"}
-                  >
+                  Pi.init completed:{" "}
+                  <span className={debug.initCompleted ? "text-primary" : "text-destructive"}>
                     {String(debug.initCompleted)}
                   </span>
                 </div>
                 <div>
-                  Pi.authenticate started: {" "}
-                  <span
-                    className={debug.authStarted ? "text-primary" : "text-destructive"}
-                  >
+                  Pi.authenticate started:{" "}
+                  <span className={debug.authStarted ? "text-primary" : "text-destructive"}>
                     {String(debug.authStarted)}
                   </span>
                 </div>
                 <div>
-                  Authentication returned user: {" "}
-                  <span
-                    className={debug.userReturned ? "text-primary" : "text-destructive"}
-                  >
+                  Authentication returned user:{" "}
+                  <span className={debug.userReturned ? "text-primary" : "text-destructive"}>
                     {String(debug.userReturned)}
                   </span>
                 </div>
@@ -125,8 +117,7 @@ export function LoginScreen() {
                 </div>
                 {debug.lastError && (
                   <div>
-                    Last error: {" "}
-                    <span className="text-destructive">{debug.lastError}</span>
+                    Last error: <span className="text-destructive">{debug.lastError}</span>
                   </div>
                 )}
                 <div>
