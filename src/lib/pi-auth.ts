@@ -113,17 +113,13 @@ function injectPiSdkScript(): Promise<void> {
       log("SDK already on window");
       return resolve();
     }
-    const existing = document.querySelector<HTMLScriptElement>(
-      `script[src="${SDK_URL}"]`,
-    );
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${SDK_URL}"]`);
     if (existing) {
       if (window.Pi) return resolve();
       existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener(
-        "error",
-        () => reject(new Error("SDK_LOAD_FAILED")),
-        { once: true },
-      );
+      existing.addEventListener("error", () => reject(new Error("SDK_LOAD_FAILED")), {
+        once: true,
+      });
       return;
     }
     log("Injecting SDK script:", SDK_URL);
@@ -174,17 +170,29 @@ export async function initializePi(): Promise<void> {
       });
       const Pi = await waitForPiSdk();
       updateDebug({ sdkLoaded: true, lastStep: "calling-init" });
-      log("Pi SDK ready, calling Pi.init()");
-      // Await Pi.init() directly. Don't impose a timeout — proceeding before
-      // init resolves causes "SDK was not initialized" on authenticate.
-      const ret = Pi.init({ version: "2.0", sandbox: false });
-      if (ret && typeof (ret as Promise<void>).then === "function") {
-        await ret;
+      log("Pi SDK ready, calling Pi.init() best-effort without blocking");
+      try {
+        const ret = Pi.init({ version: "2.0", sandbox: false });
+        if (ret && typeof (ret as Promise<void>).then === "function") {
+          ret
+            .then(() => {
+              updateDebug({ initCompleted: true, lastStep: "init-completed" });
+              log("Pi.init completed");
+            })
+            .catch((e) => {
+              const msg = (e as Error)?.message || "INIT_FAILED";
+              log("Pi.init best-effort failed:", msg);
+              updateDebug({ lastError: msg, lastStep: "init-error-nonblocking" });
+            });
+        } else {
+          updateDebug({ initCompleted: true, lastStep: "init-completed" });
+          log("Pi.init completed");
+        }
+      } catch (e) {
+        const msg = (e as Error)?.message || "INIT_FAILED";
+        log("Pi.init best-effort threw:", msg);
+        updateDebug({ lastError: msg, lastStep: "init-error-nonblocking" });
       }
-      // Small settle delay for SDKs that finalize state post-resolve.
-      await new Promise((r) => setTimeout(r, 50));
-      updateDebug({ initCompleted: true, lastStep: "init-completed" });
-      log("Pi.init completed");
     } catch (err) {
       const msg = (err as Error)?.message || "INIT_FAILED";
       errLog("initializePi error:", err);
@@ -214,15 +222,16 @@ function onIncompletePaymentFound(payment: unknown) {
 }
 
 export async function authenticatePi(): Promise<PiUser> {
+  console.log("LOGIN CLICKED");
   log("authenticatePi() called");
   updateDebug({
     authStarted: false,
     authCompleted: false,
     userReturned: false,
     lastError: null,
-    lastStep: "ensuring-init",
+    lastStep: "window-pi-check",
   });
-  await initializePi();
+  console.log("WINDOW.PI CHECK", Boolean(window.Pi));
   const Pi = window.Pi;
   if (!Pi) {
     updateDebug({ lastError: "SDK_UNAVAILABLE", lastStep: "no-sdk" });
@@ -232,6 +241,7 @@ export async function authenticatePi(): Promise<PiUser> {
   let result: PiAuthResult;
   try {
     updateDebug({ authStarted: true, lastStep: "calling-authenticate" });
+    console.log("AUTH CALLED");
     log("Calling Pi.authenticate() with scopes:", DEFAULT_SCOPES);
     result = await withTimeout(
       Pi.authenticate(DEFAULT_SCOPES, onIncompletePaymentFound),
