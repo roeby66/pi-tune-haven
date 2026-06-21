@@ -113,17 +113,13 @@ function injectPiSdkScript(): Promise<void> {
       log("SDK already on window");
       return resolve();
     }
-    const existing = document.querySelector<HTMLScriptElement>(
-      `script[src="${SDK_URL}"]`,
-    );
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${SDK_URL}"]`);
     if (existing) {
       if (window.Pi) return resolve();
       existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener(
-        "error",
-        () => reject(new Error("SDK_LOAD_FAILED")),
-        { once: true },
-      );
+      existing.addEventListener("error", () => reject(new Error("SDK_LOAD_FAILED")), {
+        once: true,
+      });
       return;
     }
     log("Injecting SDK script:", SDK_URL);
