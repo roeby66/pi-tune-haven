@@ -91,6 +91,22 @@ export function LoginScreen() {
                 <span className="font-semibold text-foreground">Pi Browser</span>.
               </p>
             )}
+
+            {mounted && (
+              <div className="mt-4 rounded-lg border border-white/10 bg-background/60 p-3 text-left text-[11px] font-mono leading-relaxed text-muted-foreground">
+                <div className="mb-1 font-semibold text-foreground">Pi Auth Debug</div>
+                <div>Pi SDK loaded: <span className={debug.sdkLoaded ? "text-primary" : "text-destructive"}>{String(debug.sdkLoaded)}</span></div>
+                <div>Pi.init completed: <span className={debug.initCompleted ? "text-primary" : "text-destructive"}>{String(debug.initCompleted)}</span></div>
+                <div>Pi.authenticate started: <span className={debug.authStarted ? "text-primary" : "text-destructive"}>{String(debug.authStarted)}</span></div>
+                <div>Authentication returned user: <span className={debug.userReturned ? "text-primary" : "text-destructive"}>{String(debug.userReturned)}</span></div>
+                <div>Last step: <span className="text-foreground">{debug.lastStep}</span></div>
+                {debug.lastError && (
+                  <div>Last error: <span className="text-destructive">{debug.lastError}</span></div>
+                )}
+                <div>isPiBrowser: {String(isPiBrowser)} · isSdkReady: {String(isSdkReady)}</div>
+              </div>
+            )}
+
           </div>
 
           <p className="mt-6 text-center text-[11px] text-muted-foreground">
