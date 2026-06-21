@@ -60,7 +60,7 @@ export function LoginScreen() {
             <button
               type="button"
               onClick={() => void signIn()}
-              disabled={loading || (mounted && !isSdkReady)}
+              disabled={loading}
               className="group relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[oklch(0.86_0.17_90)] to-[oklch(0.72_0.18_60)] px-5 py-3.5 text-base font-semibold text-primary-foreground shadow-gold transition-transform active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
@@ -72,12 +72,6 @@ export function LoginScreen() {
               )}
               Sign in with Pi Network
             </button>
-
-            {mounted && !isSdkReady && !error && (
-              <p className="mt-3 text-center text-xs text-muted-foreground">
-                Loading Pi SDK…
-              </p>
-            )}
 
             {mounted && error && (
               <p className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-xs text-destructive-foreground">
