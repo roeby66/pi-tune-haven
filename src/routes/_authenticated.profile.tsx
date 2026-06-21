@@ -20,6 +20,7 @@ function ProfilePage() {
 
   return (
     <div>
+      <h1 className="sr-only">Your Profile</h1>
       <div className="rounded-2xl bg-gradient-hero p-5 text-primary-foreground shadow-purple">
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-foreground/15 text-2xl font-extrabold ring-2 ring-primary-foreground/30">

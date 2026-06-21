@@ -71,14 +71,17 @@ function ArtistStudio() {
         <div className="mt-4 grid gap-3">
           <input
             placeholder="Artist name"
+            aria-label="Artist name"
             className="rounded-lg border border-white/10 bg-background/60 px-3 py-2 text-sm focus:border-primary/40 focus:outline-none"
           />
           <input
             placeholder="Genre (e.g. Synthwave)"
+            aria-label="Genre"
             className="rounded-lg border border-white/10 bg-background/60 px-3 py-2 text-sm focus:border-primary/40 focus:outline-none"
           />
           <textarea
             placeholder="Short bio"
+            aria-label="Short bio"
             rows={3}
             className="rounded-lg border border-white/10 bg-background/60 px-3 py-2 text-sm focus:border-primary/40 focus:outline-none"
           />
@@ -96,10 +99,12 @@ function ArtistStudio() {
         <div className="mt-3 grid gap-2">
           <input
             placeholder="Song title"
+            aria-label="Song title"
             className="rounded-lg border border-white/10 bg-background/60 px-3 py-2 text-sm"
           />
           <input
             placeholder="Album"
+            aria-label="Album"
             className="rounded-lg border border-white/10 bg-background/60 px-3 py-2 text-sm"
           />
           <label className="flex cursor-pointer items-center justify-center rounded-lg border border-dashed border-white/15 bg-background/40 px-3 py-6 text-xs text-muted-foreground">
