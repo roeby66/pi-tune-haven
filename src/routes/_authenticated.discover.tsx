@@ -33,6 +33,7 @@ function DiscoverPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search songs, artists…"
+          aria-label="Search songs and artists"
           className="w-full rounded-xl border border-white/10 bg-card/60 py-3 pl-10 pr-3 text-sm placeholder:text-muted-foreground focus:border-primary/40 focus:outline-none"
         />
       </div>
