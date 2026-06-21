@@ -36,10 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
   const [isSdkReady, setSdkReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const autoTriedRef = useRef(false);
   const inFlightRef = useRef(false);
 
-  // Hydrate from storage + init the SDK. Never stay stuck on "Loading Pi SDK…".
+  // Hydrate from storage + best-effort SDK init. Login is always button-driven.
   useEffect(() => {
     const existing = getCurrentUser();
     if (existing) {
@@ -54,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setSdkReady(true);
       })
       .catch(() => {
-        // Mark ready so the button is usable; signIn() will surface a clear error.
         if (!cancelled) setSdkReady(true);
       });
     return () => {
@@ -85,24 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutPi();
     resetPiInit();
     inFlightRef.current = false;
-    autoTriedRef.current = false;
     setError(null);
     setUser(null);
     setStatus("unauthenticated");
   }, []);
-
-  // Auto-trigger authentication inside Pi Browser once the SDK is ready.
-  useEffect(() => {
-    if (
-      isSdkReady &&
-      status === "unauthenticated" &&
-      isPiBrowser() &&
-      !autoTriedRef.current
-    ) {
-      autoTriedRef.current = true;
-      void signIn();
-    }
-  }, [isSdkReady, status, signIn]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
