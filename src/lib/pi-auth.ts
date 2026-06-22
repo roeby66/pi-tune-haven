@@ -21,8 +21,8 @@ export interface PiAuthDebug {
   lastStep: string;
 }
 
-const DEFAULT_SCOPES: PiAuthScope[] = ["username"];
-const AUTH_TIMEOUT_MS = 15000;
+const DEFAULT_SCOPES: PiAuthScope[] = ["username", "payments"];
+const AUTH_TIMEOUT_MS = 20000;
 const SDK_TIMEOUT_MS = 10000;
 const SDK_URL = "https://sdk.minepi.com/pi-sdk.js";
 const STORAGE_KEY = "mypimusic.pi_user";
@@ -159,46 +159,25 @@ function waitForPiSdk(timeoutMs = SDK_TIMEOUT_MS): Promise<PiSDK> {
   });
 }
 
-export async function initializePi(): Promise<void> {
+export function initializePi(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
+    updateDebug({ initStarted: true, lastStep: "loading-sdk", lastError: null });
+    log("Pi.init starting. isPiBrowser =", isPiBrowser());
+    await injectPiSdkScript();
+    const Pi = await waitForPiSdk();
+    updateDebug({ sdkLoaded: true, lastStep: "calling-init" });
+    log("Pi SDK ready, awaiting Pi.init({ version: '2.0', sandbox: false })");
     try {
-      updateDebug({ initStarted: true, lastStep: "loading-sdk", lastError: null });
-      log("Init start. isPiBrowser =", isPiBrowser());
-      await injectPiSdkScript().catch((e) => {
-        log("injectPiSdkScript fall-through:", (e as Error)?.message);
-      });
-      const Pi = await waitForPiSdk();
-      updateDebug({ sdkLoaded: true, lastStep: "calling-init" });
-      log("Pi SDK ready, calling Pi.init() best-effort without blocking");
-      try {
-        const ret = Pi.init({ version: "2.0", sandbox: false });
-        if (ret && typeof (ret as Promise<void>).then === "function") {
-          ret
-            .then(() => {
-              updateDebug({ initCompleted: true, lastStep: "init-completed" });
-              log("Pi.init completed");
-            })
-            .catch((e) => {
-              const msg = (e as Error)?.message || "INIT_FAILED";
-              log("Pi.init best-effort failed:", msg);
-              updateDebug({ lastError: msg, lastStep: "init-error-nonblocking" });
-            });
-        } else {
-          updateDebug({ initCompleted: true, lastStep: "init-completed" });
-          log("Pi.init completed");
-        }
-      } catch (e) {
-        const msg = (e as Error)?.message || "INIT_FAILED";
-        log("Pi.init best-effort threw:", msg);
-        updateDebug({ lastError: msg, lastStep: "init-error-nonblocking" });
-      }
-    } catch (err) {
-      const msg = (err as Error)?.message || "INIT_FAILED";
-      errLog("initializePi error:", err);
+      await Promise.resolve(Pi.init({ version: "2.0", sandbox: false }));
+      updateDebug({ initCompleted: true, lastStep: "init-completed" });
+      log("Pi.init completed");
+    } catch (e) {
+      const msg = (e as Error)?.message || "INIT_FAILED";
+      errLog("Pi.init failed:", msg);
       updateDebug({ lastError: msg, lastStep: "init-error" });
       initPromise = null;
-      throw err;
+      throw new Error("INIT_TIMEOUT");
     }
   })();
   return initPromise;
@@ -223,14 +202,16 @@ function onIncompletePaymentFound(payment: unknown) {
 
 export async function authenticatePi(): Promise<PiUser> {
   console.log("LOGIN CLICKED");
-  log("authenticatePi() called");
-  updateDebug({
-    authStarted: false,
-    authCompleted: false,
-    userReturned: false,
-    lastError: null,
-    lastStep: "window-pi-check",
-  });
+  log("authenticatePi() called - ensuring Pi.init has completed");
+
+  // Ensure init has completed before authenticate
+  try {
+    await initializePi();
+  } catch (e) {
+    errLog("Init failed before authenticate:", e);
+    throw e;
+  }
+
   console.log("WINDOW.PI CHECK", Boolean(window.Pi));
   const Pi = window.Pi;
   if (!Pi) {
@@ -238,10 +219,17 @@ export async function authenticatePi(): Promise<PiUser> {
     throw new Error("SDK_UNAVAILABLE");
   }
 
+  updateDebug({
+    authStarted: true,
+    authCompleted: false,
+    userReturned: false,
+    lastError: null,
+    lastStep: "calling-authenticate",
+  });
+
   let result: PiAuthResult;
   try {
-    updateDebug({ authStarted: true, lastStep: "calling-authenticate" });
-    console.log("AUTH CALLED");
+    console.log("AUTH CALLED", { scopes: DEFAULT_SCOPES });
     log("Calling Pi.authenticate() with scopes:", DEFAULT_SCOPES);
     result = await withTimeout(
       Pi.authenticate(DEFAULT_SCOPES, onIncompletePaymentFound),
@@ -249,11 +237,11 @@ export async function authenticatePi(): Promise<PiUser> {
       "AUTH_TIMEOUT",
     );
     updateDebug({ authCompleted: true, lastStep: "authenticate-returned" });
-    log("Pi.authenticate completed", { uid: result?.user?.uid });
+    log("Pi.authenticate completed", { uid: result?.user?.uid, username: result?.user?.username });
   } catch (err) {
     const raw = (err as Error)?.message ?? "";
     const message = raw.toLowerCase();
-    errLog("Pi.authenticate error:", raw);
+    errLog("Pi.authenticate error:", err);
     updateDebug({ lastError: raw || "AUTH_FAILED", lastStep: "authenticate-error" });
     if (raw === "AUTH_TIMEOUT") throw new Error("AUTH_TIMEOUT");
     if (message.includes("cancel")) throw new Error("AUTH_CANCELLED");
