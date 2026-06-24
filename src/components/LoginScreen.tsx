@@ -107,17 +107,44 @@ export function LoginScreen() {
                   </span>
                 </div>
                 <div>
+                  Pi.authenticate started:{" "}
+                  <span className={debug.authStarted ? "text-primary" : "text-destructive"}>
+                    {String(debug.authStarted)}
+                  </span>
+                </div>
+                <div>
+                  Pi.authenticate completed:{" "}
+                  <span className={debug.authCompleted ? "text-primary" : "text-destructive"}>
+                    {String(debug.authCompleted)}
+                  </span>
+                </div>
+                <div>
                   Authentication returned user:{" "}
                   <span className={debug.userReturned ? "text-primary" : "text-destructive"}>
                     {String(debug.userReturned)}
                   </span>
                 </div>
+                {debug.initSkipped && (
+                  <div className="text-amber-400">
+                    Init soft-timeout: continued without init completion
+                  </div>
+                )}
                 <div>
-                  Last step: <span className="text-foreground">{debug.lastStep}</span>
+                  Current stage: <span className="text-foreground">{debug.lastStep}</span>
                 </div>
+                {debug.username && (
+                  <div>
+                    Username: <span className="text-foreground">{debug.username}</span>
+                  </div>
+                )}
+                {debug.uid && (
+                  <div>
+                    UID: <span className="text-foreground">{debug.uid}</span>
+                  </div>
+                )}
                 {debug.lastError && (
                   <div>
-                    Last error: <span className="text-destructive">{debug.lastError}</span>
+                    SDK error: <span className="text-destructive">{debug.lastError}</span>
                   </div>
                 )}
                 <div>
