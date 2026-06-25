@@ -48,13 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("unauthenticated");
     }
     let cancelled = false;
-    initializePi()
-      .then(() => {
-        if (!cancelled) setSdkReady(true);
-      })
-      .catch(() => {
-        if (!cancelled) setSdkReady(true);
-      });
+    // Only attempt init on mount when the Pi SDK environment is detected.
+    // Otherwise defer init entirely to the sign-in button click.
+    if (isPiBrowser()) {
+      initializePi()
+        .then(() => {
+          if (!cancelled) setSdkReady(true);
+        })
+        .catch(() => {
+          if (!cancelled) setSdkReady(false);
+        });
+    }
     return () => {
       cancelled = true;
     };
