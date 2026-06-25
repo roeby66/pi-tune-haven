@@ -26,7 +26,7 @@ export interface PiAuthDebug {
 
 const DEFAULT_SCOPES: PiAuthScope[] = ["username", "payments"];
 const AUTH_TIMEOUT_MS = 20000;
-const INIT_SOFT_TIMEOUT_MS = 5000;
+const AUTH_TIMEOUT_MS = 20000;
 const SDK_URL = "https://sdk.minepi.com/pi-sdk.js";
 const STORAGE_KEY = "mypimusic.pi_user";
 
