@@ -101,7 +101,29 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap",
       },
     ],
-    scripts: [],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "MyPiMusic",
+          url: "https://pi-tune-haven.lovable.app",
+          description:
+            "MyPiMusic is a music streaming and promotion platform built exclusively for Pi Network Pioneers.",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "MyPiMusic",
+          url: "https://pi-tune-haven.lovable.app",
+          logo: "https://pi-tune-haven.lovable.app/favicon.ico",
+        }),
+      },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,

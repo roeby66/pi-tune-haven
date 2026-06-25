@@ -1,0 +1,11 @@
+# MyPiMusic
+
+> MyPiMusic is a music streaming and promotion platform built exclusively for Pi Network Pioneers. Pioneers sign in with their Pi identity to discover, stream, and promote music created by the Pi community.
+
+MyPiMusic is an independent, community-built application. It is not affiliated with, endorsed by, or operated by the Pi Core Team. The app authenticates users through the official Pi Network SDK and runs inside the Pi Browser.
+
+## Pages
+
+- [Sign in](/): Landing and sign-in page for Pi Pioneers entering MyPiMusic.
+- [Privacy Policy](/privacy): How MyPiMusic collects, uses, and protects user data.
+- [Terms of Service](/terms): Rules and guidelines for using MyPiMusic.

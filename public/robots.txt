@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pi-tune-haven.lovable.app/sitemap.xml
