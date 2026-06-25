@@ -9,7 +9,10 @@ export const Route = createFileRoute("/privacy")({
       { name: "description", content: "MyPiMusic Privacy Policy. Learn how we collect, use, and protect your data when you use our Pi Network music streaming platform." },
       { property: "og:title", content: "Privacy Policy — MyPiMusic" },
       { property: "og:description", content: "MyPiMusic Privacy Policy. Learn how we collect, use, and protect your data when you use our Pi Network music streaming platform." },
+      { property: "og:url", content: "https://pi-tune-haven.lovable.app/privacy" },
+      { property: "og:type", content: "website" },
     ],
+    links: [{ rel: "canonical", href: "https://pi-tune-haven.lovable.app/privacy" }],
   }),
   component: PrivacyPage,
 });

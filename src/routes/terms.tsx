@@ -9,7 +9,10 @@ export const Route = createFileRoute("/terms")({
       { name: "description", content: "MyPiMusic Terms of Service. Read the rules and guidelines for using our Pi Network music streaming platform." },
       { property: "og:title", content: "Terms of Service — MyPiMusic" },
       { property: "og:description", content: "MyPiMusic Terms of Service. Read the rules and guidelines for using our Pi Network music streaming platform." },
+      { property: "og:url", content: "https://pi-tune-haven.lovable.app/terms" },
+      { property: "og:type", content: "website" },
     ],
+    links: [{ rel: "canonical", href: "https://pi-tune-haven.lovable.app/terms" }],
   }),
   component: TermsPage,
 });
