@@ -170,47 +170,23 @@ function onIncompletePaymentFound(payment: unknown) {
   console.log("[PiAuth] Incomplete payment:", payment);
 }
 
-/**
- * Wait up to `ms` for initializePi() to complete. If it does not complete in
- * time, resolve anyway so we can still attempt Pi.authenticate(). Pi.init may
- * actually have finished inside the SDK even if our promise hasn't resolved.
- */
-async function ensureInitWithSoftTimeout(): Promise<void> {
-  const initStart = Date.now();
-  const initP = initializePi().catch((e) => {
-    console.error("INITIALIZE PI FAILED (caught in soft-wait):", (e as Error).message);
-  });
-  await Promise.race([
-    initP,
-    new Promise<void>((resolve) =>
-      setTimeout(() => {
-        if (!debugState.initCompleted) {
-          const reason = debugState.lastError || debugState.lastStep;
-          console.warn(
-            `INITIALIZE PI soft-timeout after ${Date.now() - initStart}ms (reason: ${reason}) — continuing to Pi.authenticate anyway`,
-          );
-          updateDebug({ initSkipped: true, lastStep: "init-soft-timeout" });
-        }
-        resolve();
-      }, INIT_SOFT_TIMEOUT_MS),
-    ),
-  ]);
-}
-
 export async function authenticatePi(): Promise<PiUser> {
   console.log("LOGIN CLICKED");
 
-  // Kick off init but never block authenticate longer than 5s on it.
-  await ensureInitWithSoftTimeout();
+  // Pi.authenticate must ONLY run after Pi.init fully completes.
+  // No soft-timeout, no fallback — wait for confirmed init success.
+  try {
+    await initializePi();
+  } catch (e) {
+    const msg = (e as Error)?.message || "INIT_FAILED";
+    console.error("AUTH BLOCKED: Pi.init did not complete:", msg);
+    updateDebug({ lastError: msg, lastStep: "init-failed-before-auth" });
+    throw new Error(msg === "SDK_LOAD_FAILED" || msg === "SDK_UNAVAILABLE" ? msg : "INIT_FAILED");
+  }
 
-  // If SDK still isn't on window, try one last injection attempt synchronously.
-  if (!window.Pi) {
-    console.warn("WINDOW.PI missing after init wait — attempting one more SDK injection");
-    try {
-      await injectPiSdkScript();
-    } catch (e) {
-      console.error("Final SDK injection failed:", (e as Error).message);
-    }
+  if (!debugState.initCompleted) {
+    updateDebug({ lastError: "INIT_NOT_COMPLETED", lastStep: "init-not-completed" });
+    throw new Error("INIT_FAILED");
   }
 
   const piExists = Boolean(window.Pi);
