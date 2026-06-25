@@ -112,35 +112,51 @@ function injectPiSdkScript(): Promise<void> {
   });
 }
 
+async function waitForWindowPi(timeoutMs = 15000, intervalMs = 100): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (typeof window !== "undefined" && window.Pi && typeof window.Pi.init === "function") {
+      console.log("PI SDK DETECTED");
+      return;
+    }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error("SDK_UNAVAILABLE");
+}
+
 export function initializePi(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    console.log("INITIALIZE PI START");
     updateDebug({ initStarted: true, lastStep: "loading-sdk", lastError: null });
     try {
       await injectPiSdkScript();
     } catch (e) {
       const msg = (e as Error)?.message || "SDK_LOAD_FAILED";
-      console.error("INITIALIZE PI FAILED (sdk load):", msg);
+      console.error("INIT FAILED (sdk load):", msg);
       updateDebug({ lastError: msg, lastStep: "sdk-load-failed" });
       initPromise = null;
       throw new Error(msg);
     }
-    const Pi = window.Pi;
-    if (!Pi) {
-      console.error("INITIALIZE PI FAILED: window.Pi missing after load");
+    // Wait/retry until window.Pi is fully available before calling Pi.init.
+    updateDebug({ lastStep: "waiting-for-window-pi" });
+    try {
+      await waitForWindowPi();
+    } catch {
+      console.error("INIT FAILED: window.Pi never became available");
       updateDebug({ lastError: "SDK_UNAVAILABLE", lastStep: "no-sdk" });
       initPromise = null;
       throw new Error("SDK_UNAVAILABLE");
     }
+    const Pi = window.Pi!;
     updateDebug({ sdkLoaded: true, lastStep: "calling-init" });
+    console.log("INIT START");
     try {
       await Promise.resolve(Pi.init({ version: "2.0", sandbox: false }));
       updateDebug({ initCompleted: true, lastStep: "init-completed" });
-      console.log("INITIALIZE PI SUCCESS");
+      console.log("INIT SUCCESS");
     } catch (e) {
       const msg = (e as Error)?.message || "INIT_FAILED";
-      console.error("INITIALIZE PI FAILED:", msg);
+      console.error("INIT FAILED:", msg);
       updateDebug({ lastError: msg, lastStep: "init-error" });
       initPromise = null;
       throw new Error("INIT_FAILED");
