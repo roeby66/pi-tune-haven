@@ -185,41 +185,46 @@ function onIncompletePaymentFound(payment: unknown) {
   console.log("[PiAuth] Incomplete payment:", payment);
 }
 
+let authInFlight: Promise<PiUser> | null = null;
+
 export async function authenticatePi(): Promise<PiUser> {
-  console.log("LOGIN CLICKED");
-
-  // Pi.authenticate must ONLY run after Pi.init fully completes.
-  // No soft-timeout, no fallback — wait for confirmed init success.
-  try {
-    await initializePi();
-  } catch (e) {
-    const msg = (e as Error)?.message || "INIT_FAILED";
-    console.error("AUTH BLOCKED: Pi.init did not complete:", msg);
-    updateDebug({ lastError: msg, lastStep: "init-failed-before-auth" });
-    throw new Error(msg === "SDK_LOAD_FAILED" || msg === "SDK_UNAVAILABLE" ? msg : "INIT_FAILED");
+  // Strict single-flight guard: if a call is already in flight, return the
+  // same promise instead of triggering Pi.authenticate twice.
+  if (authInFlight) {
+    console.log("AUTH CLICKED (ignored: already in flight)");
+    return authInFlight;
   }
+  console.log("AUTH CLICKED");
 
-  if (!debugState.initCompleted) {
-    updateDebug({ lastError: "INIT_NOT_COMPLETED", lastStep: "init-not-completed" });
-    throw new Error("INIT_FAILED");
-  }
+  authInFlight = (async () => {
+    // Pi.authenticate must ONLY run after Pi.init fully completes.
+    try {
+      await initializePi();
+    } catch (e) {
+      const msg = (e as Error)?.message || "INIT_FAILED";
+      console.error("AUTH BLOCKED: Pi.init did not complete:", msg);
+      updateDebug({ lastError: msg, lastStep: "init-failed-before-auth" });
+      throw new Error(msg === "SDK_LOAD_FAILED" || msg === "SDK_UNAVAILABLE" ? msg : "INIT_FAILED");
+    }
 
-  const piExists = Boolean(window.Pi);
-  console.log("WINDOW.PI EXISTS:", piExists);
+    if (!debugState.initCompleted) {
+      updateDebug({ lastError: "INIT_NOT_COMPLETED", lastStep: "init-not-completed" });
+      throw new Error("INIT_FAILED");
+    }
 
-  const Pi = window.Pi;
-  if (!Pi) {
-    updateDebug({ lastError: "SDK_UNAVAILABLE", lastStep: "no-sdk-at-auth" });
-    throw new Error("SDK_UNAVAILABLE");
-  }
+    const Pi = window.Pi;
+    if (!Pi) {
+      updateDebug({ lastError: "SDK_UNAVAILABLE", lastStep: "no-sdk-at-auth" });
+      throw new Error("SDK_UNAVAILABLE");
+    }
 
-  updateDebug({
-    authStarted: true,
-    authCompleted: false,
-    userReturned: false,
-    lastError: null,
-    lastStep: "calling-authenticate",
-  });
+    updateDebug({
+      authStarted: true,
+      authCompleted: false,
+      userReturned: false,
+      lastError: null,
+      lastStep: "calling-authenticate",
+    });
 
   console.log("AUTH CALLED", { scopes: DEFAULT_SCOPES });
 
