@@ -185,106 +185,103 @@ function onIncompletePaymentFound(payment: unknown) {
   console.log("[PiAuth] Incomplete payment:", payment);
 }
 
+let authInFlight: Promise<PiUser> | null = null;
+
 export async function authenticatePi(): Promise<PiUser> {
-  console.log("LOGIN CLICKED");
-
-  // Pi.authenticate must ONLY run after Pi.init fully completes.
-  // No soft-timeout, no fallback — wait for confirmed init success.
-  try {
-    await initializePi();
-  } catch (e) {
-    const msg = (e as Error)?.message || "INIT_FAILED";
-    console.error("AUTH BLOCKED: Pi.init did not complete:", msg);
-    updateDebug({ lastError: msg, lastStep: "init-failed-before-auth" });
-    throw new Error(msg === "SDK_LOAD_FAILED" || msg === "SDK_UNAVAILABLE" ? msg : "INIT_FAILED");
+  // Strict single-flight guard: if a call is already in flight, return the
+  // same promise instead of triggering Pi.authenticate twice.
+  if (authInFlight) {
+    console.log("AUTH CLICKED (ignored: already in flight)");
+    return authInFlight;
   }
+  console.log("AUTH CLICKED");
 
-  if (!debugState.initCompleted) {
-    updateDebug({ lastError: "INIT_NOT_COMPLETED", lastStep: "init-not-completed" });
-    throw new Error("INIT_FAILED");
-  }
-
-  const piExists = Boolean(window.Pi);
-  console.log("WINDOW.PI EXISTS:", piExists);
-
-  const Pi = window.Pi;
-  if (!Pi) {
-    updateDebug({ lastError: "SDK_UNAVAILABLE", lastStep: "no-sdk-at-auth" });
-    throw new Error("SDK_UNAVAILABLE");
-  }
-
-  updateDebug({
-    authStarted: true,
-    authCompleted: false,
-    userReturned: false,
-    lastError: null,
-    lastStep: "calling-authenticate",
-  });
-
-  console.log("AUTH CALLED", { scopes: DEFAULT_SCOPES });
-
-  let result: PiAuthResult;
-  try {
-    // Note: NO timeout race here — the Pi popup may legitimately take a while
-    // for the user to approve. We only timeout if the SDK itself never returns.
-    result = await Promise.race([
-      Pi.authenticate(DEFAULT_SCOPES, onIncompletePaymentFound),
-      new Promise<PiAuthResult>((_, reject) =>
-        setTimeout(() => reject(new Error("AUTH_TIMEOUT")), AUTH_TIMEOUT_MS),
-      ),
-    ]);
-    updateDebug({ authCompleted: true, lastStep: "authenticate-returned" });
-    console.log("AUTH SUCCESS", { uid: result?.user?.uid, username: result?.user?.username });
-  } catch (err) {
-    const raw = (err as Error)?.message ?? "";
-    const message = raw.toLowerCase();
-    console.error("AUTH ERROR:", raw);
-    updateDebug({ lastError: raw || "AUTH_FAILED", lastStep: "authenticate-error" });
-    if (raw === "AUTH_TIMEOUT") {
-      console.error("AUTH FAILED: timeout");
-      throw new Error("AUTH_TIMEOUT");
+  authInFlight = (async () => {
+    // Pi.authenticate must ONLY run after Pi.init fully completes.
+    try {
+      await initializePi();
+    } catch (e) {
+      const msg = (e as Error)?.message || "INIT_FAILED";
+      console.error("AUTH BLOCKED: Pi.init did not complete:", msg);
+      updateDebug({ lastError: msg, lastStep: "init-failed-before-auth" });
+      throw new Error(msg === "SDK_LOAD_FAILED" || msg === "SDK_UNAVAILABLE" ? msg : "INIT_FAILED");
     }
-    if (message.includes("cancel")) {
-      console.error("AUTH FAILED: cancelled");
-      throw new Error("AUTH_CANCELLED");
-    }
-    if (message.includes("network")) {
-      console.error("AUTH FAILED: network");
-      throw new Error("NETWORK_ERROR");
-    }
-    if (message.includes("not initialized")) {
-      console.error("AUTH FAILED: SDK not initialized");
-      throw new Error("INIT_TIMEOUT");
-    }
-    console.error("AUTH FAILED:", raw);
-    throw new Error("AUTH_FAILED");
-  }
 
-  if (!result?.user?.uid) {
-    updateDebug({ lastError: "NO_USER", lastStep: "no-user" });
-    console.error("AUTH FAILED: no user returned");
-    throw new Error("AUTH_FAILED");
-  }
+    if (!debugState.initCompleted) {
+      updateDebug({ lastError: "INIT_NOT_COMPLETED", lastStep: "init-not-completed" });
+      throw new Error("INIT_FAILED");
+    }
 
-  const user: PiUser = {
-    uid: result.user.uid,
-    username: result.user.username,
-    accessToken: result.accessToken,
-    authenticatedAt: new Date().toISOString(),
-  };
-  updateDebug({
-    userReturned: true,
-    lastStep: "user-stored",
-    uid: user.uid,
-    username: user.username,
-  });
+    const Pi = window.Pi;
+    if (!Pi) {
+      updateDebug({ lastError: "SDK_UNAVAILABLE", lastStep: "no-sdk-at-auth" });
+      throw new Error("SDK_UNAVAILABLE");
+    }
+
+    updateDebug({
+      authStarted: true,
+      authCompleted: false,
+      userReturned: false,
+      lastError: null,
+      lastStep: "calling-authenticate",
+    });
+
+    console.log("AUTH CALLED", { scopes: DEFAULT_SCOPES });
+
+    let result: PiAuthResult;
+    try {
+      result = await Promise.race([
+        Pi.authenticate(DEFAULT_SCOPES, onIncompletePaymentFound),
+        new Promise<PiAuthResult>((_, reject) =>
+          setTimeout(() => reject(new Error("AUTH_TIMEOUT")), AUTH_TIMEOUT_MS),
+        ),
+      ]);
+      updateDebug({ authCompleted: true, lastStep: "authenticate-returned" });
+      console.log("AUTH SUCCESS", { uid: result?.user?.uid, username: result?.user?.username });
+    } catch (err) {
+      const raw = (err as Error)?.message ?? "";
+      const message = raw.toLowerCase();
+      console.error("AUTH FAILED:", raw);
+      updateDebug({ lastError: raw || "AUTH_FAILED", lastStep: "authenticate-error" });
+      if (raw === "AUTH_TIMEOUT") throw new Error("AUTH_TIMEOUT");
+      if (message.includes("cancel")) throw new Error("AUTH_CANCELLED");
+      if (message.includes("network")) throw new Error("NETWORK_ERROR");
+      if (message.includes("not initialized")) throw new Error("INIT_TIMEOUT");
+      throw new Error("AUTH_FAILED");
+    }
+
+    if (!result?.user?.uid) {
+      updateDebug({ lastError: "NO_USER", lastStep: "no-user" });
+      console.error("AUTH FAILED: no user returned");
+      throw new Error("AUTH_FAILED");
+    }
+
+    const user: PiUser = {
+      uid: result.user.uid,
+      username: result.user.username,
+      accessToken: result.accessToken,
+      authenticatedAt: new Date().toISOString(),
+    };
+    updateDebug({
+      userReturned: true,
+      lastStep: "user-stored",
+      uid: user.uid,
+      username: user.username,
+    });
+
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+    } catch {
+      /* storage not available */
+    }
+    return user;
+  })();
 
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-  } catch {
-    /* storage not available */
+    return await authInFlight;
+  } finally {
+    authInFlight = null;
   }
-  return user;
 }
 
 export function logoutPi(): void {
