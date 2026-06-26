@@ -88,9 +88,12 @@ let initPromise: Promise<void> | null = null;
 
 export function isPiBrowser(): boolean {
   if (typeof window === "undefined") return false;
-  if (typeof window.Pi !== "undefined") return true;
   const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
-  return /PiBrowser|Pi Network|minepi/i.test(ua);
+  const detected = typeof window.Pi !== "undefined" || /PiBrowser|Pi Network|minepi/i.test(ua);
+  if (detected && !debugState.piBrowserDetected) {
+    updateDebug({ piBrowserDetected: true });
+  }
+  return detected;
 }
 
 function injectPiSdkScript(): Promise<void> {
