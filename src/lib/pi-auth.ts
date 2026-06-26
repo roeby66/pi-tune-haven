@@ -11,6 +11,7 @@ export interface PiUser {
 export type PiAuthScope = "username" | "payments" | "wallet_address";
 
 export interface PiAuthDebug {
+  piBrowserDetected: boolean;
   sdkLoaded: boolean;
   initStarted: boolean;
   initCompleted: boolean;
@@ -22,6 +23,7 @@ export interface PiAuthDebug {
   lastStep: string;
   uid: string | null;
   username: string | null;
+  authSource: "none" | "fresh-pi-login";
 }
 
 const DEFAULT_SCOPES: PiAuthScope[] = ["username", "payments"];
