@@ -275,12 +275,15 @@ export async function authenticatePi(): Promise<PiUser> {
       lastStep: "user-stored",
       uid: user.uid,
       username: user.username,
+      authSource: "fresh-pi-login",
     });
 
+    // Strict mode: do NOT persist cached sessions. Pi.authenticate() is the
+    // only source of truth and must run fresh on every app launch.
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      window.localStorage.removeItem(STORAGE_KEY);
     } catch {
-      /* storage not available */
+      /* noop */
     }
     return user;
   })();
