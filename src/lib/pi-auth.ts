@@ -185,6 +185,7 @@ export function resetPiInit(): void {
     lastStep: "reset",
     uid: null,
     username: null,
+    authSource: "none",
   });
 }
 
