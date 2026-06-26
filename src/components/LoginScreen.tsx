@@ -89,6 +89,12 @@ export function LoginScreen() {
               <div className="mt-4 rounded-lg border border-white/10 bg-background/60 p-3 text-left text-[11px] font-mono leading-relaxed text-muted-foreground">
                 <div className="mb-1 font-semibold text-foreground">Pi Auth Debug</div>
                 <div>
+                  Pi Browser detected:{" "}
+                  <span className={debug.piBrowserDetected || isPiBrowser ? "text-primary" : "text-destructive"}>
+                    {String(debug.piBrowserDetected || isPiBrowser)}
+                  </span>
+                </div>
+                <div>
                   Pi SDK loaded:{" "}
                   <span className={debug.sdkLoaded ? "text-primary" : "text-destructive"}>
                     {String(debug.sdkLoaded)}
@@ -98,12 +104,6 @@ export function LoginScreen() {
                   Pi.init completed:{" "}
                   <span className={debug.initCompleted ? "text-primary" : "text-destructive"}>
                     {String(debug.initCompleted)}
-                  </span>
-                </div>
-                <div>
-                  Pi.authenticate started:{" "}
-                  <span className={debug.authStarted ? "text-primary" : "text-destructive"}>
-                    {String(debug.authStarted)}
                   </span>
                 </div>
                 <div>
@@ -134,7 +134,8 @@ export function LoginScreen() {
                 </div>
                 {debug.username && (
                   <div>
-                    Username: <span className="text-foreground">{debug.username}</span>
+                    Authenticated username:{" "}
+                    <span className="text-foreground">{debug.username}</span>
                   </div>
                 )}
                 {debug.uid && (
@@ -142,6 +143,10 @@ export function LoginScreen() {
                     UID: <span className="text-foreground">{debug.uid}</span>
                   </div>
                 )}
+                <div>
+                  Auth source:{" "}
+                  <span className="text-foreground">{debug.authSource}</span>
+                </div>
                 {debug.lastError && (
                   <div>
                     SDK error: <span className="text-destructive">{debug.lastError}</span>

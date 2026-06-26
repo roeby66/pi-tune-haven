@@ -11,6 +11,7 @@ export interface PiUser {
 export type PiAuthScope = "username" | "payments" | "wallet_address";
 
 export interface PiAuthDebug {
+  piBrowserDetected: boolean;
   sdkLoaded: boolean;
   initStarted: boolean;
   initCompleted: boolean;
@@ -22,6 +23,7 @@ export interface PiAuthDebug {
   lastStep: string;
   uid: string | null;
   username: string | null;
+  authSource: "none" | "fresh-pi-login";
 }
 
 const DEFAULT_SCOPES: PiAuthScope[] = ["username", "payments"];
@@ -49,6 +51,7 @@ declare global {
 }
 
 const debugState: PiAuthDebug = {
+  piBrowserDetected: false,
   sdkLoaded: false,
   initStarted: false,
   initCompleted: false,
@@ -60,6 +63,7 @@ const debugState: PiAuthDebug = {
   lastStep: "idle",
   uid: null,
   username: null,
+  authSource: "none",
 };
 
 type DebugListener = (s: PiAuthDebug) => void;
@@ -84,9 +88,12 @@ let initPromise: Promise<void> | null = null;
 
 export function isPiBrowser(): boolean {
   if (typeof window === "undefined") return false;
-  if (typeof window.Pi !== "undefined") return true;
   const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
-  return /PiBrowser|Pi Network|minepi/i.test(ua);
+  const detected = typeof window.Pi !== "undefined" || /PiBrowser|Pi Network|minepi/i.test(ua);
+  if (detected && !debugState.piBrowserDetected) {
+    updateDebug({ piBrowserDetected: true });
+  }
+  return detected;
 }
 
 function injectPiSdkScript(): Promise<void> {
@@ -178,6 +185,7 @@ export function resetPiInit(): void {
     lastStep: "reset",
     uid: null,
     username: null,
+    authSource: "none",
   });
 }
 
@@ -267,12 +275,15 @@ export async function authenticatePi(): Promise<PiUser> {
       lastStep: "user-stored",
       uid: user.uid,
       username: user.username,
+      authSource: "fresh-pi-login",
     });
 
+    // Strict mode: do NOT persist cached sessions. Pi.authenticate() is the
+    // only source of truth and must run fresh on every app launch.
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      window.localStorage.removeItem(STORAGE_KEY);
     } catch {
-      /* storage not available */
+      /* noop */
     }
     return user;
   })();
@@ -293,14 +304,16 @@ export function logoutPi(): void {
 }
 
 export function getCurrentUser(): PiUser | null {
+  // Strict mode: never restore a cached Pi session. The user must complete a
+  // fresh Pi.authenticate() call on every launch. We also proactively clear
+  // any stale storage that previous versions may have written.
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as PiUser;
+    window.localStorage.removeItem(STORAGE_KEY);
   } catch {
-    return null;
+    /* noop */
   }
+  return null;
 }
 
 export function describeAuthError(code: string): string {
