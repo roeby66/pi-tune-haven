@@ -51,6 +51,7 @@ declare global {
 }
 
 const debugState: PiAuthDebug = {
+  piBrowserDetected: false,
   sdkLoaded: false,
   initStarted: false,
   initCompleted: false,
@@ -62,6 +63,7 @@ const debugState: PiAuthDebug = {
   lastStep: "idle",
   uid: null,
   username: null,
+  authSource: "none",
 };
 
 type DebugListener = (s: PiAuthDebug) => void;
