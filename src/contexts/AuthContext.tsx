@@ -38,15 +38,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const inFlightRef = useRef(false);
 
-  // Strict mode: never restore a cached session. On every app launch the user
-  // is unauthenticated until Pi.authenticate() returns a valid user object.
-  // SDK init is best-effort and only runs when the Pi Browser is detected.
+  // Hydrate from storage + best-effort SDK init. Login is always button-driven.
   useEffect(() => {
-    // Proactively clear any legacy cached session.
-    getCurrentUser();
-    setUser(null);
-    setStatus("unauthenticated");
+    const existing = getCurrentUser();
+    if (existing) {
+      setUser(existing);
+      setStatus("authenticated");
+    } else {
+      setStatus("unauthenticated");
+    }
     let cancelled = false;
+    // Only attempt init on mount when the Pi SDK environment is detected.
+    // Otherwise defer init entirely to the sign-in button click.
     if (isPiBrowser()) {
       initializePi()
         .then(() => {
