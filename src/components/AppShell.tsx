@@ -77,7 +77,7 @@ export function AppShell() {
       <MusicPlayer />
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/95 backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-5xl grid-cols-6">
+        <div className="mx-auto grid max-w-5xl grid-cols-5">
           {NAV.map(({ to, label, icon: Icon }) => {
             const active = pathname === to || (to !== "/home" && pathname.startsWith(to));
             return (
