@@ -30,15 +30,26 @@ export function AppShell() {
             </div>
           </Link>
           {user && (
-            <Link
-              to="/profile"
-              className="flex items-center gap-2 rounded-full border border-white/10 bg-card/70 px-3 py-1.5 text-xs"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold">
-                {user.username.slice(0, 1).toUpperCase()}
-              </span>
-              <span className="font-medium">@{user.username}</span>
-            </Link>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary"
+                  aria-label="Admin panel"
+                >
+                  <Shield className="h-3 w-3" /> Admin
+                </Link>
+              )}
+              <Link
+                to="/profile"
+                className="flex items-center gap-2 rounded-full border border-white/10 bg-card/70 px-3 py-1.5 text-xs"
+              >
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px] font-bold">
+                  {user.username.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="font-medium">@{user.username}</span>
+              </Link>
+            </div>
           )}
         </div>
       </header>
