@@ -13,7 +13,7 @@ const NAV = [
 ] as const;
 
 export function AppShell() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
