@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Heart, Play } from "lucide-react";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { formatDuration, getSong, songsByArtist } from "@/lib/mock-data";
+import { formatDuration } from "@/lib/types";
+import { getSong, listSongs } from "@/lib/music.functions";
 import { SongRow } from "@/components/SongCard";
 
 export const Route = createFileRoute("/_authenticated/music/$id")({
@@ -11,8 +13,19 @@ export const Route = createFileRoute("/_authenticated/music/$id")({
 
 function MusicDetailsPage() {
   const { id } = Route.useParams();
-  const song = getSong(id);
   const { playSong, toggleFavorite, isFavorite } = usePlayer();
+
+  const songQ = useQuery({ queryKey: ["song", id], queryFn: () => getSong({ data: { id } }) });
+  const song = songQ.data ?? null;
+  const moreQ = useQuery({
+    queryKey: ["songs", "more", song?.artistId],
+    queryFn: () => listSongs({ data: { limit: 20 } }),
+    enabled: !!song,
+  });
+
+  if (songQ.isLoading) {
+    return <div className="py-20 text-center text-sm text-muted-foreground">Loading…</div>;
+  }
 
   if (!song) {
     return (
@@ -25,7 +38,7 @@ function MusicDetailsPage() {
     );
   }
 
-  const more = songsByArtist(song.artistId).filter((s) => s.id !== song.id);
+  const more = (moreQ.data ?? []).filter((s) => s.artistId === song.artistId && s.id !== song.id);
   const fav = isFavorite(song.id);
 
   return (
@@ -37,13 +50,13 @@ function MusicDetailsPage() {
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-card/60">
         <img src={song.cover} alt={song.title} className="aspect-square w-full object-cover" />
         <div className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-            {song.album}
-          </p>
+          {song.album && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">{song.album}</p>
+          )}
           <h1 className="mt-1 text-2xl font-extrabold">{song.title}</h1>
           <p className="text-sm text-muted-foreground">{song.artist}</p>
-          <div className="mt-2 flex gap-3 text-[11px] text-muted-foreground">
-            <span>{formatDuration(song.duration)}</span>
+          <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+            {song.duration > 0 && <span>{formatDuration(song.duration)}</span>}
             <span>·</span>
             <span>{song.plays.toLocaleString()} plays</span>
             <span>·</span>
@@ -52,13 +65,13 @@ function MusicDetailsPage() {
 
           <div className="mt-4 flex gap-2">
             <button
-              onClick={() => playSong(song.id)}
+              onClick={() => playSong(song, more.length ? [song, ...more] : [song])}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-gold"
             >
               <Play className="h-4 w-4" /> Play
             </button>
             <button
-              onClick={() => toggleFavorite(song.id)}
+              onClick={() => void toggleFavorite(song.id)}
               className={`flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 ${
                 fav ? "bg-primary/10 text-primary" : "bg-card/60 text-muted-foreground"
               }`}
@@ -75,7 +88,7 @@ function MusicDetailsPage() {
           <h2 className="mb-3 text-lg font-bold">More from {song.artist}</h2>
           <div className="space-y-1">
             {more.map((s, i) => (
-              <SongRow key={s.id} song={s} index={i} />
+              <SongRow key={s.id} song={s} index={i} queue={more} />
             ))}
           </div>
         </section>
