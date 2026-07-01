@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Compass, Heart, Home, ListMusic, Mic2, User } from "lucide-react";
+import { Compass, Heart, Home, Mic2, Shield, User } from "lucide-react";
 import { MusicPlayer } from "./MusicPlayer";
 import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,7 +8,6 @@ const NAV = [
   { to: "/home", label: "Home", icon: Home },
   { to: "/discover", label: "Discover", icon: Compass },
   { to: "/artists", label: "Artists", icon: Mic2 },
-  { to: "/playlists", label: "Playlists", icon: ListMusic },
   { to: "/favorites", label: "Favorites", icon: Heart },
   { to: "/profile", label: "Profile", icon: User },
 ] as const;

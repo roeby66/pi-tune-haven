@@ -20,6 +20,7 @@ import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated.h
 import { Route as AuthenticatedFavoritesRouteImport } from './routes/_authenticated.favorites'
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated.discover'
 import { Route as AuthenticatedArtistsRouteImport } from './routes/_authenticated.artists'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedMusicIdRouteImport } from './routes/_authenticated.music.$id'
 
 const TermsRoute = TermsRouteImport.update({
@@ -76,6 +77,11 @@ const AuthenticatedArtistsRoute = AuthenticatedArtistsRouteImport.update({
   path: '/artists',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedMusicIdRoute = AuthenticatedMusicIdRouteImport.update({
   id: '/music/$id',
   path: '/music/$id',
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/artists': typeof AuthenticatedArtistsRoute
   '/discover': typeof AuthenticatedDiscoverRoute
   '/favorites': typeof AuthenticatedFavoritesRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/artists': typeof AuthenticatedArtistsRoute
   '/discover': typeof AuthenticatedDiscoverRoute
   '/favorites': typeof AuthenticatedFavoritesRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/artists': typeof AuthenticatedArtistsRoute
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_authenticated/favorites': typeof AuthenticatedFavoritesRoute
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin'
     | '/artists'
     | '/discover'
     | '/favorites'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin'
     | '/artists'
     | '/discover'
     | '/favorites'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/sitemap.xml'
     | '/terms'
+    | '/_authenticated/admin'
     | '/_authenticated/artists'
     | '/_authenticated/discover'
     | '/_authenticated/favorites'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArtistsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/music/$id': {
       id: '/_authenticated/music/$id'
       path: '/music/$id'
@@ -264,6 +283,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedArtistsRoute: typeof AuthenticatedArtistsRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedFavoritesRoute: typeof AuthenticatedFavoritesRoute
@@ -274,6 +294,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedArtistsRoute: AuthenticatedArtistsRoute,
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedFavoritesRoute: AuthenticatedFavoritesRoute,
