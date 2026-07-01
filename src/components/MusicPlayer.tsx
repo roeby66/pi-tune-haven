@@ -1,25 +1,43 @@
 import { usePlayer } from "@/contexts/PlayerContext";
-import { formatDuration } from "@/lib/mock-data";
-import { Heart, Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react";
+import { formatDuration } from "@/lib/types";
+import {
+  Heart,
+  Pause,
+  Play,
+  Repeat,
+  Repeat1,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Square,
+  Volume2,
+} from "lucide-react";
 
 export function MusicPlayer() {
   const {
     current,
     isPlaying,
     togglePlay,
+    stop,
     next,
     previous,
     progress,
-    setProgress,
+    duration,
+    seek,
     volume,
     setVolume,
     toggleFavorite,
     isFavorite,
+    shuffle,
+    repeat,
+    toggleShuffle,
+    cycleRepeat,
   } = usePlayer();
 
   if (!current) return null;
 
-  const elapsed = Math.floor(current.duration * progress);
+  const elapsed = Math.floor((duration || current.duration) * progress);
+  const total = Math.floor(duration || current.duration);
 
   return (
     <div className="fixed inset-x-0 bottom-16 z-40 px-3 md:bottom-0 md:px-4">
@@ -35,20 +53,21 @@ export function MusicPlayer() {
             <p className="truncate text-xs text-muted-foreground">{current.artist}</p>
           </div>
           <button
-            onClick={() => toggleFavorite(current.id)}
+            onClick={() => void toggleFavorite(current.id)}
             className="rounded-full p-2 text-muted-foreground transition-colors hover:text-primary"
             aria-label="Favorite"
           >
-            <Heart
-              className={`h-4 w-4 ${isFavorite(current.id) ? "fill-primary text-primary" : ""}`}
-            />
+            <Heart className={`h-4 w-4 ${isFavorite(current.id) ? "fill-primary text-primary" : ""}`} />
           </button>
           <div className="flex items-center gap-1">
             <button
-              onClick={previous}
-              className="rounded-full p-2 text-foreground/80 hover:text-foreground"
-              aria-label="Previous"
+              onClick={toggleShuffle}
+              className={`hidden rounded-full p-2 sm:block ${shuffle ? "text-primary" : "text-muted-foreground"}`}
+              aria-label="Shuffle"
             >
+              <Shuffle className="h-4 w-4" />
+            </button>
+            <button onClick={previous} className="rounded-full p-2 text-foreground/80 hover:text-foreground" aria-label="Previous">
               <SkipBack className="h-5 w-5" />
             </button>
             <button
@@ -58,12 +77,22 @@ export function MusicPlayer() {
             >
               {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
             </button>
-            <button
-              onClick={next}
-              className="rounded-full p-2 text-foreground/80 hover:text-foreground"
-              aria-label="Next"
-            >
+            <button onClick={next} className="rounded-full p-2 text-foreground/80 hover:text-foreground" aria-label="Next">
               <SkipForward className="h-5 w-5" />
+            </button>
+            <button
+              onClick={stop}
+              className="hidden rounded-full p-2 text-muted-foreground hover:text-foreground sm:block"
+              aria-label="Stop"
+            >
+              <Square className="h-4 w-4" />
+            </button>
+            <button
+              onClick={cycleRepeat}
+              className={`hidden rounded-full p-2 sm:block ${repeat !== "off" ? "text-primary" : "text-muted-foreground"}`}
+              aria-label="Repeat"
+            >
+              {repeat === "one" ? <Repeat1 className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
             </button>
           </div>
         </div>
@@ -75,11 +104,11 @@ export function MusicPlayer() {
             min={0}
             max={1000}
             value={Math.round(progress * 1000)}
-            onChange={(e) => setProgress(Number(e.target.value) / 1000)}
+            onChange={(e) => seek(Number(e.target.value) / 1000)}
             className="h-1 flex-1 cursor-pointer accent-[oklch(0.82_0.16_86)]"
             aria-label="Progress"
           />
-          <span className="tabular-nums">{formatDuration(current.duration)}</span>
+          <span className="tabular-nums">{formatDuration(total)}</span>
         </div>
 
         <div className="mt-1 hidden items-center gap-2 md:flex">

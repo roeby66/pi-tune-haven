@@ -11,53 +11,60 @@ import {
 import {
   authenticatePi,
   describeAuthError,
-  getCurrentUser,
   initializePi,
   isPiBrowser,
   logoutPi,
   resetPiInit,
   type PiUser,
 } from "@/lib/pi-auth";
+import { verifyPiAuth, getPiSession, signOutPi } from "@/lib/pi.functions";
+
+export interface AppUser {
+  uid: string;
+  username: string;
+  isAdmin: boolean;
+  joinedAt: string;
+}
 
 interface AuthContextValue {
-  user: PiUser | null;
+  user: AppUser | null;
   status: "loading" | "authenticated" | "unauthenticated";
   isPiBrowser: boolean;
   isSdkReady: boolean;
+  isAdmin: boolean;
   error: string | null;
   signIn: () => Promise<void>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<PiUser | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
   const [isSdkReady, setSdkReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlightRef = useRef(false);
 
-  // Hydrate from storage + best-effort SDK init. Login is always button-driven.
+  // Rehydrate from server session cookie + best-effort SDK init.
   useEffect(() => {
-    const existing = getCurrentUser();
-    if (existing) {
-      setUser(existing);
-      setStatus("authenticated");
-    } else {
-      setStatus("unauthenticated");
-    }
     let cancelled = false;
-    // Only attempt init on mount when the Pi SDK environment is detected.
-    // Otherwise defer init entirely to the sign-in button click.
+    getPiSession()
+      .then((sess) => {
+        if (cancelled) return;
+        if (sess) {
+          setUser(sess);
+          setStatus("authenticated");
+        } else {
+          setStatus("unauthenticated");
+        }
+      })
+      .catch(() => !cancelled && setStatus("unauthenticated"));
+
     if (isPiBrowser()) {
       initializePi()
-        .then(() => {
-          if (!cancelled) setSdkReady(true);
-        })
-        .catch(() => {
-          if (!cancelled) setSdkReady(false);
-        });
+        .then(() => !cancelled && setSdkReady(true))
+        .catch(() => !cancelled && setSdkReady(false));
     }
     return () => {
       cancelled = true;
@@ -70,8 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
     setStatus("loading");
     try {
-      const next = await authenticatePi();
-      setUser(next);
+      const piUser: PiUser = await authenticatePi();
+      // Server-side verification with Pi API + session cookie.
+      const verified = await verifyPiAuth({ data: { accessToken: piUser.accessToken } });
+      setUser(verified);
       setStatus("authenticated");
     } catch (err) {
       const code = (err as Error).message || "AUTH_FAILED";
@@ -83,7 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signOut = useCallback(() => {
+  const signOut = useCallback(async () => {
+    try {
+      await signOutPi();
+    } catch {
+      /* ignore */
+    }
     logoutPi();
     resetPiInit();
     inFlightRef.current = false;
@@ -98,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       isPiBrowser: isPiBrowser(),
       isSdkReady,
+      isAdmin: !!user?.isAdmin,
       error,
       signIn,
       signOut,

@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BadgeCheck, LogOut } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { BadgeCheck, LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePlayer } from "@/contexts/PlayerContext";
-import { artists, getSong } from "@/lib/mock-data";
 import { SongRow } from "@/components/SongCard";
+import { listFavoriteSongs, listRecentPlays } from "@/lib/music.functions";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({ meta: [{ title: "Profile — MyPiMusic" }] }),
@@ -11,12 +11,14 @@ export const Route = createFileRoute("/_authenticated/profile")({
 });
 
 function ProfilePage() {
-  const { user, signOut } = useAuth();
-  const { favorites } = usePlayer();
-  const favoriteSongs = Array.from(favorites).map(getSong).filter(Boolean);
-  const favoriteArtists = artists.slice(0, 3);
+  const { user, signOut, isAdmin } = useAuth();
+  const favs = useQuery({ queryKey: ["favorites", "songs"], queryFn: () => listFavoriteSongs() });
+  const recent = useQuery({ queryKey: ["plays", "recent"], queryFn: () => listRecentPlays({ data: { limit: 10 } }) });
 
   if (!user) return null;
+
+  const favoriteSongs = favs.data ?? [];
+  const recentSongs = recent.data ?? [];
 
   return (
     <div>
@@ -35,15 +37,33 @@ function ProfilePage() {
             <p className="mt-1 text-[10px] font-mono opacity-70">UID: {user.uid}</p>
           </div>
         </div>
-        <div className="mt-4 flex gap-2 text-xs">
-          <span className="rounded-full bg-primary-foreground/15 px-3 py-1 font-semibold">
-            ● Authenticated
-          </span>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-primary-foreground/15 px-3 py-1 font-semibold">● Authenticated</span>
           <span className="rounded-full bg-primary-foreground/15 px-3 py-1">
-            Joined {new Date(user.authenticatedAt).toLocaleDateString()}
+            Joined {new Date(user.joinedAt).toLocaleDateString()}
           </span>
+          {isAdmin && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary-foreground/25 px-3 py-1 font-semibold">
+              <Shield className="h-3 w-3" /> Admin
+            </span>
+          )}
         </div>
       </div>
+
+      <section className="mt-6">
+        <h2 className="mb-3 text-lg font-bold">Recently Played</h2>
+        {recentSongs.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
+            Nothing played yet.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {recentSongs.map((s, i) => (
+              <SongRow key={`${s.id}-${i}`} song={s} index={i} queue={recentSongs} />
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="mt-6">
         <h2 className="mb-3 text-lg font-bold">Favorite Songs</h2>
@@ -53,21 +73,11 @@ function ProfilePage() {
           </p>
         ) : (
           <div className="space-y-1">
-            {favoriteSongs.map((s, i) => s && <SongRow key={s.id} song={s} index={i} />)}
+            {favoriteSongs.map((s, i) => (
+              <SongRow key={s.id} song={s} index={i} queue={favoriteSongs} />
+            ))}
           </div>
         )}
-      </section>
-
-      <section className="mt-6">
-        <h2 className="mb-3 text-lg font-bold">Favorite Artists</h2>
-        <div className="grid grid-cols-3 gap-3">
-          {favoriteArtists.map((a) => (
-            <div key={a.id} className="rounded-xl border border-white/10 bg-card/60 p-3 text-center">
-              <img src={a.cover} alt={a.name} className="mx-auto h-16 w-16 rounded-full object-cover" />
-              <p className="mt-2 truncate text-xs font-semibold">{a.name}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       <section className="mt-6 rounded-2xl border border-white/10 bg-card/60 p-4">
@@ -81,7 +91,7 @@ function ProfilePage() {
       </section>
 
       <button
-        onClick={signOut}
+        onClick={() => void signOut()}
         className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive-foreground"
       >
         <LogOut className="h-4 w-4" /> Sign out

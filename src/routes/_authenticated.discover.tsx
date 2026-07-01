@@ -1,27 +1,40 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { SongRow } from "@/components/SongCard";
-import { songs } from "@/lib/mock-data";
+import { listSongs } from "@/lib/music.functions";
 
 export const Route = createFileRoute("/_authenticated/discover")({
   head: () => ({ meta: [{ title: "Discover — MyPiMusic" }] }),
   component: DiscoverPage,
 });
 
-const GENRES = ["All", "Synthwave", "Electronic", "Indie Pop", "Folk", "Hip-Hop", "Ambient"];
-
 function DiscoverPage() {
   const [q, setQ] = useState("");
-  const [genre, setGenre] = useState("All");
+  const [genre, setGenre] = useState<string>("All");
 
-  const filtered = songs.filter((s) => {
-    const matchQ =
-      !q ||
-      s.title.toLowerCase().includes(q.toLowerCase()) ||
-      s.artist.toLowerCase().includes(q.toLowerCase());
-    return matchQ;
+  const songsQuery = useQuery({
+    queryKey: ["songs", "all"],
+    queryFn: () => listSongs({ data: { limit: 100 } }),
   });
+
+  const genres = useMemo(() => {
+    const set = new Set<string>();
+    (songsQuery.data ?? []).forEach((s) => s.genre && set.add(s.genre));
+    return ["All", ...Array.from(set).sort()];
+  }, [songsQuery.data]);
+
+  const filtered = useMemo(() => {
+    return (songsQuery.data ?? []).filter((s) => {
+      const matchQ =
+        !q ||
+        s.title.toLowerCase().includes(q.toLowerCase()) ||
+        s.artist.toLowerCase().includes(q.toLowerCase());
+      const matchG = genre === "All" || s.genre === genre;
+      return matchQ && matchG;
+    });
+  }, [songsQuery.data, q, genre]);
 
   return (
     <div>
@@ -39,7 +52,7 @@ function DiscoverPage() {
       </div>
 
       <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-        {GENRES.map((g) => (
+        {genres.map((g) => (
           <button
             key={g}
             onClick={() => setGenre(g)}
@@ -55,10 +68,14 @@ function DiscoverPage() {
       </div>
 
       <div className="space-y-1">
-        {filtered.map((s, i) => (
-          <SongRow key={s.id} song={s} index={i} />
-        ))}
-        {filtered.length === 0 && (
+        {songsQuery.isLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-14 animate-pulse rounded-xl bg-card/40" />
+          ))
+        ) : (
+          filtered.map((s, i) => <SongRow key={s.id} song={s} index={i} queue={filtered} />)
+        )}
+        {!songsQuery.isLoading && filtered.length === 0 && (
           <p className="py-12 text-center text-sm text-muted-foreground">No tracks found.</p>
         )}
       </div>
