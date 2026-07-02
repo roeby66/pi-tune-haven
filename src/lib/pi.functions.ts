@@ -27,22 +27,33 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
     const { setPiSessionCookie } = await import("@/lib/pi-session.server");
 
     // 1) Verify with Pi Platform.
+    console.log("[verifyPiAuth] token length:", data.accessToken.length);
     let piMe: { uid: string; username: string };
     try {
       const res = await fetch("https://api.minepi.com/v2/me", {
         headers: { Authorization: `Bearer ${data.accessToken}` },
       });
+      const rawBody = await res.text();
+      console.log("[verifyPiAuth] Pi /me status:", res.status, "body:", rawBody.slice(0, 500));
       if (!res.ok) {
-        console.error("[verifyPiAuth] Pi /me failed", res.status);
-        throw new Error("PI_VERIFY_FAILED");
+        throw new Error(`PI_VERIFY_FAILED: status=${res.status} body=${rawBody.slice(0, 200)}`);
       }
-      const body = (await res.json()) as { uid?: string; username?: string };
-      if (!body.uid || !body.username) throw new Error("PI_VERIFY_FAILED");
-      piMe = { uid: body.uid, username: body.username };
+      let parsed: { uid?: string; username?: string } = {};
+      try {
+        parsed = JSON.parse(rawBody);
+      } catch {
+        throw new Error(`PI_VERIFY_FAILED: non-json body=${rawBody.slice(0, 200)}`);
+      }
+      if (!parsed.uid || !parsed.username) {
+        throw new Error(`PI_VERIFY_FAILED: missing uid/username in ${rawBody.slice(0, 200)}`);
+      }
+      piMe = { uid: parsed.uid, username: parsed.username };
     } catch (e) {
-      console.error("[verifyPiAuth] Pi API error", e);
-      throw new Error("PI_VERIFY_FAILED");
+      const msg = (e as Error)?.message || "PI_VERIFY_FAILED";
+      console.error("[verifyPiAuth] Pi API error:", msg);
+      throw new Error(msg);
     }
+
 
     // 2) Upsert pi_users row.
     const { error: upsertErr } = await supabaseAdmin

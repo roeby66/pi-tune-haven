@@ -78,18 +78,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("loading");
     try {
       const piUser: PiUser = await authenticatePi();
+      console.log("[AuthContext] Pi returned user; forwarding token to backend", {
+        uid: piUser.uid,
+        username: piUser.username,
+        tokenLen: piUser.accessToken?.length ?? 0,
+      });
       // Server-side verification with Pi API + session cookie.
       const verified = await verifyPiAuth({ data: { accessToken: piUser.accessToken } });
+      console.log("[AuthContext] Server verified session", verified);
       setUser(verified);
       setStatus("authenticated");
     } catch (err) {
-      const code = (err as Error).message || "AUTH_FAILED";
-      setError(describeAuthError(code));
+      const raw = (err as Error)?.message || "AUTH_FAILED";
+      console.error("[AuthContext] signIn failed:", raw);
+      // If it's a known short code, translate; otherwise show the raw server error.
+      const known = /^(PI_BROWSER_REQUIRED|SDK_UNAVAILABLE|SDK_LOAD_FAILED|AUTH_CANCELLED|AUTH_TIMEOUT|NETWORK_ERROR|INIT_TIMEOUT|INIT_FAILED|AUTH_FAILED)$/;
+      setError(known.test(raw) ? describeAuthError(raw) : raw);
       setUser(null);
       setStatus("unauthenticated");
     } finally {
       inFlightRef.current = false;
     }
+
   }, []);
 
   const signOut = useCallback(async () => {
