@@ -55,27 +55,39 @@ export function verifyPiSessionToken(token: string): PiSessionPayload | null {
 
 export function setPiSessionCookie(uid: string, username: string): void {
   const token = signPiSession(uid, username);
+  // SameSite=None + Secure so the cookie is sent in both top-level Pi Browser
+  // navigation AND the Lovable preview iframe (cross-site context).
   setCookie(COOKIE_NAME, token, {
     httpOnly: true,
     secure: true,
-    sameSite: "lax",
+    sameSite: "none",
     path: "/",
     maxAge: MAX_AGE_SECONDS,
   });
+  console.log("[pi-session] set cookie", { uid, username, len: token.length });
 }
 
 export function clearPiSessionCookie(): void {
-  deleteCookie(COOKIE_NAME, { path: "/" });
+  deleteCookie(COOKIE_NAME, { path: "/", secure: true, sameSite: "none" });
 }
 
 export function readPiSession(): PiSessionPayload | null {
   const token = getCookie(COOKIE_NAME);
-  if (!token) return null;
-  return verifyPiSessionToken(token);
+  if (!token) {
+    console.log("[pi-session] no cookie present on request");
+    return null;
+  }
+  const parsed = verifyPiSessionToken(token);
+  if (!parsed) {
+    console.warn("[pi-session] cookie present but failed HMAC/expiry check", {
+      len: token.length,
+    });
+  }
+  return parsed;
 }
 
 export function requirePiSession(): PiSessionPayload {
   const s = readPiSession();
-  if (!s) throw new Error("UNAUTHORIZED");
+  if (!s) throw new Error("UNAUTHORIZED: no valid Pi session cookie on request");
   return s;
 }
