@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Compass, Heart, Home, Mic2, Shield, User } from "lucide-react";
+import { Compass, Crown, Heart, Home, Mic2, Shield, User } from "lucide-react";
 import { MusicPlayer } from "./MusicPlayer";
 import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +31,13 @@ export function AppShell() {
           </Link>
           {user && (
             <div className="flex items-center gap-2">
+              <Link
+                to="/membership"
+                className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary"
+                aria-label="Membership plans"
+              >
+                <Crown className="h-3 w-3" /> Membership
+              </Link>
               {isAdmin && (
                 <Link
                   to="/admin"
