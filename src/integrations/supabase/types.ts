@@ -80,6 +80,176 @@ export type Database = {
           },
         ]
       }
+      membership_history: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          new_plan: string | null
+          previous_plan: string | null
+          user_uid: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          new_plan?: string | null
+          previous_plan?: string | null
+          user_uid: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          new_plan?: string | null
+          previous_plan?: string | null
+          user_uid?: string
+        }
+        Relationships: []
+      }
+      membership_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          membership_plan_id: string
+          memo: string | null
+          metadata: Json
+          paid_at: string | null
+          payment_id: string
+          payment_method: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          transaction_id: string | null
+          tx_hash: string | null
+          updated_at: string
+          user_uid: string
+          verified_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          membership_plan_id: string
+          memo?: string | null
+          metadata?: Json
+          paid_at?: string | null
+          payment_id: string
+          payment_method?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          transaction_id?: string | null
+          tx_hash?: string | null
+          updated_at?: string
+          user_uid: string
+          verified_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          membership_plan_id?: string
+          memo?: string | null
+          metadata?: Json
+          paid_at?: string | null
+          payment_id?: string
+          payment_method?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          transaction_id?: string | null
+          tx_hash?: string | null
+          updated_at?: string
+          user_uid?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "membership_payments_membership_plan_id_fkey"
+            columns: ["membership_plan_id"]
+            isOneToOne: false
+            referencedRelation: "membership_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      membership_plans: {
+        Row: {
+          benefits: Json
+          billing_cycle: string
+          created_at: string
+          currency: string
+          description: string | null
+          display_name: string
+          duration_days: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          benefits?: Json
+          billing_cycle?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_name: string
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          benefits?: Json
+          billing_cycle?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          display_name?: string
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_logs: {
+        Row: {
+          created_at: string
+          event_message: string | null
+          event_type: string
+          id: string
+          payment_id: string | null
+          raw_response: Json | null
+        }
+        Insert: {
+          created_at?: string
+          event_message?: string | null
+          event_type: string
+          id?: string
+          payment_id?: string | null
+          raw_response?: Json | null
+        }
+        Update: {
+          created_at?: string
+          event_message?: string | null
+          event_type?: string
+          id?: string
+          payment_id?: string | null
+          raw_response?: Json | null
+        }
+        Relationships: []
+      }
       pi_users: {
         Row: {
           avatar_url: string | null
@@ -206,6 +376,56 @@ export type Database = {
           },
         ]
       }
+      user_memberships: {
+        Row: {
+          auto_renew: boolean
+          created_at: string
+          expires_at: string | null
+          id: string
+          membership_level: string
+          membership_plan_id: string
+          membership_status: Database["public"]["Enums"]["membership_status"]
+          renewal_status: string | null
+          started_at: string | null
+          updated_at: string
+          user_uid: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          membership_level: string
+          membership_plan_id: string
+          membership_status?: Database["public"]["Enums"]["membership_status"]
+          renewal_status?: string | null
+          started_at?: string | null
+          updated_at?: string
+          user_uid: string
+        }
+        Update: {
+          auto_renew?: boolean
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          membership_level?: string
+          membership_plan_id?: string
+          membership_status?: Database["public"]["Enums"]["membership_status"]
+          renewal_status?: string | null
+          started_at?: string | null
+          updated_at?: string
+          user_uid?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_memberships_membership_plan_id_fkey"
+            columns: ["membership_plan_id"]
+            isOneToOne: false
+            referencedRelation: "membership_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -248,6 +468,19 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      membership_status:
+        | "pending"
+        | "active"
+        | "expired"
+        | "cancelled"
+        | "suspended"
+      payment_status:
+        | "pending"
+        | "completed"
+        | "cancelled"
+        | "failed"
+        | "expired"
+        | "refunded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -376,6 +609,21 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      membership_status: [
+        "pending",
+        "active",
+        "expired",
+        "cancelled",
+        "suspended",
+      ],
+      payment_status: [
+        "pending",
+        "completed",
+        "cancelled",
+        "failed",
+        "expired",
+        "refunded",
+      ],
     },
   },
 } as const
