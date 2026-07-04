@@ -40,6 +40,7 @@ interface PiSDK {
     scopes: PiAuthScope[],
     onIncompletePaymentFound: (payment: unknown) => void,
   ) => Promise<PiAuthResult>;
+  createPayment?: (payment: unknown, callbacks: unknown) => void;
 }
 
 declare global {

@@ -59,12 +59,16 @@ function MembershipPage() {
   });
 
   async function startPayment(plan: MembershipPlan) {
-    if (!isPiBrowser()) {
-      setFlow({ kind: "failed", message: "Please open MyPiMusic inside the Pi Browser to pay with Pi." });
-      return;
-    }
+    console.log("[Membership]", {
+      isPiBrowser: isPiBrowser(),
+      hasPi: typeof window !== "undefined" && !!window.Pi,
+      hasCreatePayment:
+        typeof window !== "undefined" && !!(window.Pi as { createPayment?: unknown } | undefined)?.createPayment,
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+    });
     setFlow({ kind: "processing", plan, step: "Opening Pi Wallet…" });
     try {
+
       await createPiPayment(
         {
           amount: Number(plan.price),
