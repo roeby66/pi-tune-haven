@@ -26,15 +26,35 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { setPiSessionCookie } = await import("@/lib/pi-session.server");
 
+    const flowStart = Date.now();
+    const log = (stage: string, extra?: Record<string, unknown>) => {
+      const t = Date.now() - flowStart;
+      console.log(`[AUTH-SRV][${t}ms] ${stage}`, extra ?? "");
+    };
+    const time = async <T,>(stage: string, fn: () => Promise<T>): Promise<T> => {
+      const s = Date.now();
+      try {
+        const v = await fn();
+        log(`${stage}:end`, { durationMs: Date.now() - s });
+        return v;
+      } catch (e) {
+        log(`${stage}:error`, { durationMs: Date.now() - s, err: (e as Error)?.message });
+        throw e;
+      }
+    };
+
+    log("verifyPiAuth:start", { tokenLen: data.accessToken.length });
+
     // 1) Verify with Pi Platform.
-    console.log("[verifyPiAuth] token length:", data.accessToken.length);
     let piMe: { uid: string; username: string };
     try {
-      const res = await fetch("https://api.minepi.com/v2/me", {
-        headers: { Authorization: `Bearer ${data.accessToken}` },
-      });
+      const res = await time("pi./v2/me", () =>
+        fetch("https://api.minepi.com/v2/me", {
+          headers: { Authorization: `Bearer ${data.accessToken}` },
+        }),
+      );
       const rawBody = await res.text();
-      console.log("[verifyPiAuth] Pi /me status:", res.status, "body:", rawBody.slice(0, 500));
+      log("pi./v2/me:status", { status: res.status, bodyPreview: rawBody.slice(0, 200) });
       if (!res.ok) {
         throw new Error(`PI_VERIFY_FAILED: status=${res.status} body=${rawBody.slice(0, 200)}`);
       }
@@ -56,51 +76,69 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
 
 
     // 2) Upsert pi_users row.
-    const { error: upsertErr } = await supabaseAdmin
-      .from("pi_users")
-      .upsert(
-        {
-          uid: piMe.uid,
-          username: piMe.username,
-          last_seen_at: new Date().toISOString(),
-        },
-        { onConflict: "uid" },
-      );
-    if (upsertErr) {
-      console.error("[verifyPiAuth] upsert error", upsertErr);
-      throw new Error("DB_UPSERT_FAILED");
-    }
+    await time("db:upsert-pi_users", async () => {
+      const { error: upsertErr } = await supabaseAdmin
+        .from("pi_users")
+        .upsert(
+          {
+            uid: piMe.uid,
+            username: piMe.username,
+            last_seen_at: new Date().toISOString(),
+          },
+          { onConflict: "uid" },
+        );
+      if (upsertErr) {
+        console.error("[verifyPiAuth] upsert error", upsertErr);
+        throw new Error("DB_UPSERT_FAILED");
+      }
+    });
 
     // 3) Bootstrap: if no admin exists yet, grant this user admin.
-    const { count: adminCount } = await supabaseAdmin
-      .from("user_roles")
-      .select("*", { count: "exact", head: true })
-      .eq("role", "admin");
-    if ((adminCount ?? 0) === 0) {
+    const adminCount = await time("db:count-admins", async () => {
+      const { count } = await supabaseAdmin
+        .from("user_roles")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "admin");
+      return count ?? 0;
+    });
+    if (adminCount === 0) {
+      await time("db:grant-admin", async () => {
+        await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: piMe.uid, role: "admin" }, { onConflict: "user_id,role" });
+      });
+    }
+    await time("db:grant-user", async () => {
       await supabaseAdmin
         .from("user_roles")
-        .upsert({ user_id: piMe.uid, role: "admin" }, { onConflict: "user_id,role" });
-    }
-    // Every user gets the 'user' role too.
-    await supabaseAdmin
-      .from("user_roles")
-      .upsert({ user_id: piMe.uid, role: "user" }, { onConflict: "user_id,role" });
+        .upsert({ user_id: piMe.uid, role: "user" }, { onConflict: "user_id,role" });
+    });
 
     // 4) Determine admin flag & join date.
-    const { data: roles } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", piMe.uid);
+    const roles = await time("db:select-roles", async () => {
+      const { data: r } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", piMe.uid);
+      return r;
+    });
     const isAdmin = (roles ?? []).some((r) => r.role === "admin");
 
-    const { data: profile } = await supabaseAdmin
-      .from("pi_users")
-      .select("joined_at")
-      .eq("uid", piMe.uid)
-      .single();
+    const profile = await time("db:select-profile", async () => {
+      const { data: p } = await supabaseAdmin
+        .from("pi_users")
+        .select("joined_at")
+        .eq("uid", piMe.uid)
+        .single();
+      return p;
+    });
 
     // 5) Set signed session cookie.
-    setPiSessionCookie(piMe.uid, piMe.username);
+    await time("cookie:set", async () => {
+      setPiSessionCookie(piMe.uid, piMe.username);
+    });
+
+    log("verifyPiAuth:done", { totalMs: Date.now() - flowStart, uid: piMe.uid, isAdmin });
 
     return {
       uid: piMe.uid,
@@ -109,6 +147,7 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
       joinedAt: profile?.joined_at ?? new Date().toISOString(),
     };
   });
+
 
 /** Returns the current verified session (from cookie) if any. */
 export const getPiSession = createServerFn({ method: "GET" }).handler(
