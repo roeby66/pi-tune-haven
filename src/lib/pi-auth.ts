@@ -1,5 +1,7 @@
 // Pi Network authentication wrapper.
 // Docs: https://github.com/pi-apps/pi-platform-docs
+import { authLog, authWarn, authError, stageTimer, logEnvironmentSnapshot } from "./auth-diagnostics";
+
 
 export interface PiUser {
   uid: string;
