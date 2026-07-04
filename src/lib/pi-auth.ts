@@ -212,22 +212,27 @@ export async function authenticatePi(): Promise<PiUser> {
 
   authInFlight = (async () => {
     // Pi.authenticate must ONLY run after Pi.init fully completes.
+    const stopInit = stageTimer("initializePi (from authenticatePi)");
     try {
       await initializePi();
+      stopInit({ ok: true });
     } catch (e) {
+      stopInit({ ok: false });
       const msg = (e as Error)?.message || "INIT_FAILED";
-      console.error("AUTH BLOCKED: Pi.init did not complete:", msg);
+      authError("initializePi-before-auth", e);
       updateDebug({ lastError: msg, lastStep: "init-failed-before-auth" });
       throw new Error(msg === "SDK_LOAD_FAILED" || msg === "SDK_UNAVAILABLE" ? msg : "INIT_FAILED");
     }
 
     if (!debugState.initCompleted) {
+      authWarn("initCompleted-flag-false-after-init");
       updateDebug({ lastError: "INIT_NOT_COMPLETED", lastStep: "init-not-completed" });
       throw new Error("INIT_FAILED");
     }
 
     const Pi = window.Pi;
     if (!Pi) {
+      authError("no-window-Pi-at-auth", new Error("SDK_UNAVAILABLE"));
       updateDebug({ lastError: "SDK_UNAVAILABLE", lastStep: "no-sdk-at-auth" });
       throw new Error("SDK_UNAVAILABLE");
     }
@@ -240,7 +245,8 @@ export async function authenticatePi(): Promise<PiUser> {
       lastStep: "calling-authenticate",
     });
 
-    console.log("AUTH CALLED", { scopes: DEFAULT_SCOPES });
+    authLog("Pi.authenticate:call", { scopes: DEFAULT_SCOPES });
+    const stopAuth = stageTimer("Pi.authenticate", { scopes: DEFAULT_SCOPES });
 
     let result: PiAuthResult;
     try {
@@ -250,12 +256,13 @@ export async function authenticatePi(): Promise<PiUser> {
           setTimeout(() => reject(new Error("AUTH_TIMEOUT")), AUTH_TIMEOUT_MS),
         ),
       ]);
+      stopAuth({ ok: true, uid: result?.user?.uid, hasToken: !!result?.accessToken });
       updateDebug({ authCompleted: true, lastStep: "authenticate-returned" });
-      console.log("AUTH SUCCESS", { uid: result?.user?.uid, username: result?.user?.username });
     } catch (err) {
+      stopAuth({ ok: false });
       const raw = (err as Error)?.message ?? "";
       const message = raw.toLowerCase();
-      console.error("AUTH FAILED:", raw);
+      authError("Pi.authenticate", err);
       updateDebug({ lastError: raw || "AUTH_FAILED", lastStep: "authenticate-error" });
       if (raw === "AUTH_TIMEOUT") throw new Error("AUTH_TIMEOUT");
       if (message.includes("cancel")) throw new Error("AUTH_CANCELLED");
@@ -265,8 +272,8 @@ export async function authenticatePi(): Promise<PiUser> {
     }
 
     if (!result?.user?.uid) {
+      authError("Pi.authenticate:no-user", new Error("NO_USER"));
       updateDebug({ lastError: "NO_USER", lastStep: "no-user" });
-      console.error("AUTH FAILED: no user returned");
       throw new Error("AUTH_FAILED");
     }
 
@@ -282,6 +289,7 @@ export async function authenticatePi(): Promise<PiUser> {
       uid: user.uid,
       username: user.username,
     });
+    authLog("pi-user-stored", { uid: user.uid, username: user.username });
 
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
@@ -297,6 +305,7 @@ export async function authenticatePi(): Promise<PiUser> {
     authInFlight = null;
   }
 }
+
 
 export function logoutPi(): void {
   try {
