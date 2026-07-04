@@ -18,6 +18,8 @@ import {
   type PiUser,
 } from "@/lib/pi-auth";
 import { verifyPiAuth, getPiSession, signOutPi } from "@/lib/pi.functions";
+import { authStart, authLog, authError, stageTimer } from "@/lib/auth-diagnostics";
+
 
 export interface AppUser {
   uid: string;
@@ -74,23 +76,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async () => {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
+    authStart("signIn");
     setError(null);
     setStatus("loading");
+    const stopFlow = stageTimer("signIn:total");
     try {
+      const stopPi = stageTimer("authenticatePi");
       const piUser: PiUser = await authenticatePi();
-      console.log("[AuthContext] Pi returned user; forwarding token to backend", {
+      stopPi({ uid: piUser.uid, tokenLen: piUser.accessToken?.length ?? 0 });
+      authLog("pi-user-returned-to-context", {
         uid: piUser.uid,
         username: piUser.username,
         tokenLen: piUser.accessToken?.length ?? 0,
       });
       // Server-side verification with Pi API + session cookie.
+      const stopVerify = stageTimer("verifyPiAuth (serverFn)");
       const verified = await verifyPiAuth({ data: { accessToken: piUser.accessToken } });
-      console.log("[AuthContext] Server verified session", verified);
+      stopVerify({ uid: verified.uid, isAdmin: verified.isAdmin });
+      authLog("server-verified", { ...verified });
       setUser(verified);
       setStatus("authenticated");
+      stopFlow({ ok: true });
     } catch (err) {
+      stopFlow({ ok: false });
       const raw = (err as Error)?.message || "AUTH_FAILED";
-      console.error("[AuthContext] signIn failed:", raw);
+      authError("signIn", err);
+
       // If it's a known short code, translate; otherwise show the raw server error.
       const known = /^(PI_BROWSER_REQUIRED|SDK_UNAVAILABLE|SDK_LOAD_FAILED|AUTH_CANCELLED|AUTH_TIMEOUT|NETWORK_ERROR|INIT_TIMEOUT|INIT_FAILED|AUTH_FAILED)$/;
       setError(known.test(raw) ? describeAuthError(raw) : raw);
