@@ -119,47 +119,57 @@ async function waitForWindowPi(timeoutMs = 15000, intervalMs = 100): Promise<voi
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (typeof window !== "undefined" && window.Pi && typeof window.Pi.init === "function") {
-      console.log("PI SDK DETECTED");
+      authLog("waitForWindowPi:detected", { waitedMs: Date.now() - start });
       return;
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
+  authError("waitForWindowPi:timeout", new Error("SDK_UNAVAILABLE"), { waitedMs: timeoutMs });
   throw new Error("SDK_UNAVAILABLE");
 }
 
 export function initializePi(): Promise<void> {
-  if (initPromise) return initPromise;
+  if (initPromise) {
+    authLog("initializePi:reuse-existing-promise");
+    return initPromise;
+  }
   initPromise = (async () => {
     updateDebug({ initStarted: true, lastStep: "loading-sdk", lastError: null });
+    const stopInject = stageTimer("injectPiSdkScript");
     try {
       await injectPiSdkScript();
+      stopInject({ ok: true });
     } catch (e) {
+      stopInject({ ok: false });
       const msg = (e as Error)?.message || "SDK_LOAD_FAILED";
-      console.error("INIT FAILED (sdk load):", msg);
+      authError("injectPiSdkScript", e);
       updateDebug({ lastError: msg, lastStep: "sdk-load-failed" });
       initPromise = null;
       throw new Error(msg);
     }
-    // Wait/retry until window.Pi is fully available before calling Pi.init.
     updateDebug({ lastStep: "waiting-for-window-pi" });
+    logEnvironmentSnapshot();
+    const stopWait = stageTimer("waitForWindowPi");
     try {
       await waitForWindowPi();
+      stopWait({ ok: true });
     } catch {
-      console.error("INIT FAILED: window.Pi never became available");
+      stopWait({ ok: false });
       updateDebug({ lastError: "SDK_UNAVAILABLE", lastStep: "no-sdk" });
       initPromise = null;
       throw new Error("SDK_UNAVAILABLE");
     }
     const Pi = window.Pi!;
     updateDebug({ sdkLoaded: true, lastStep: "calling-init" });
-    console.log("INIT START");
+    const stopInit = stageTimer("Pi.init", { version: "2.0", sandbox: false });
     try {
       await Promise.resolve(Pi.init({ version: "2.0", sandbox: false }));
+      stopInit({ ok: true });
       updateDebug({ initCompleted: true, lastStep: "init-completed" });
-      console.log("INIT SUCCESS");
     } catch (e) {
+      stopInit({ ok: false });
       const msg = (e as Error)?.message || "INIT_FAILED";
-      console.error("INIT FAILED:", msg);
+      authError("Pi.init", e);
       updateDebug({ lastError: msg, lastStep: "init-error" });
       initPromise = null;
       throw new Error("INIT_FAILED");
@@ -167,6 +177,7 @@ export function initializePi(): Promise<void> {
   })();
   return initPromise;
 }
+
 
 export function resetPiInit(): void {
   initPromise = null;
