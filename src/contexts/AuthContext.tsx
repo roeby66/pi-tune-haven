@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const stopVerify = stageTimer("verifyPiAuth (serverFn)");
       const verified = await verifyPiAuth({ data: { accessToken: piUser.accessToken } });
       stopVerify({ uid: verified.uid, isAdmin: verified.isAdmin });
-      authLog("server-verified", verified);
+      authLog("server-verified", { ...verified });
       setUser(verified);
       setStatus("authenticated");
       stopFlow({ ok: true });
