@@ -18,6 +18,8 @@ import {
   type PiUser,
 } from "@/lib/pi-auth";
 import { verifyPiAuth, getPiSession, signOutPi } from "@/lib/pi.functions";
+import { authStart, authLog, authError, stageTimer } from "@/lib/auth-diagnostics";
+
 
 export interface AppUser {
   uid: string;
