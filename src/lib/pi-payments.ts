@@ -33,6 +33,11 @@ export async function createPiPayment(
   callbacks: PiPaymentCallbacks,
 ): Promise<void> {
   await initializePi();
+  await initializePi();
+  // Guarantee the current Pi session includes the "payments" scope. If the
+  // cached session was created without it, ensurePiScopes will invalidate the
+  // session and force a fresh Pi.authenticate() with the full scope set.
+  await ensurePiScopes(["username", "payments"]);
   const Pi = (typeof window !== "undefined" ? window.Pi : undefined) as
     | (PiWithPayments & Record<string, unknown>)
     | undefined;
