@@ -355,6 +355,7 @@ export async function authenticatePi(): Promise<PiUser> {
 export function logoutPi(): void {
   try {
     window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(SCOPES_KEY);
   } catch {
     /* noop */
   }
