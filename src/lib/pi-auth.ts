@@ -26,10 +26,45 @@ export interface PiAuthDebug {
   username: string | null;
 }
 
-const DEFAULT_SCOPES: PiAuthScope[] = ["username", "payments"];
+const DEFAULT_SCOPES: PiAuthScope[] = ["username", "payments", "wallet_address"];
+const REQUIRED_SCOPES: PiAuthScope[] = ["username", "payments"];
 const AUTH_TIMEOUT_MS = 20000;
 const SDK_URL = "https://sdk.minepi.com/pi-sdk.js";
 const STORAGE_KEY = "mypimusic.pi_user";
+const SCOPES_KEY = "mypimusic.pi_scopes";
+
+export function getGrantedScopes(): PiAuthScope[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(SCOPES_KEY);
+    return raw ? (JSON.parse(raw) as PiAuthScope[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function hasScope(scope: PiAuthScope): boolean {
+  return getGrantedScopes().includes(scope);
+}
+
+/** Ensure current Pi session has all required scopes; re-authenticate if not. */
+export async function ensurePiScopes(required: PiAuthScope[] = REQUIRED_SCOPES): Promise<PiUser> {
+  const granted = getGrantedScopes();
+  const missing = required.filter((s) => !granted.includes(s));
+  if (missing.length === 0) {
+    const cached = getCurrentUser();
+    if (cached) return cached;
+  }
+  console.log("[AUTH] Scope check — granted:", granted, "required:", required, "missing:", missing);
+  // Invalidate stale session and force a fresh authenticate with full scopes.
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(SCOPES_KEY);
+  } catch {
+    /* noop */
+  }
+  return authenticatePi();
+}
 
 interface PiAuthResult {
   accessToken: string;
