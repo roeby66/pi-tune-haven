@@ -293,6 +293,15 @@ export async function authenticatePi(): Promise<PiUser> {
         ),
       ]);
       stopAuth({ ok: true, uid: result?.user?.uid, hasToken: !!result?.accessToken });
+      // Pi SDK resolves only when all requested scopes are granted, so treat
+      // the requested scopes as the granted set.
+      const granted = DEFAULT_SCOPES;
+      console.log("[AUTH] Granted scopes:", granted);
+      try {
+        window.localStorage.setItem(SCOPES_KEY, JSON.stringify(granted));
+      } catch {
+        /* noop */
+      }
       updateDebug({ authCompleted: true, lastStep: "authenticate-returned" });
     } catch (err) {
       stopAuth({ ok: false });
