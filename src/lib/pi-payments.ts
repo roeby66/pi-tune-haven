@@ -2,7 +2,7 @@
 // Uses the official Pi SDK Payments API. Never trusts client-side success —
 // all activation is done server-side after Pi Platform verification.
 
-import { initializePi } from "@/lib/pi-auth";
+import { ensurePiScopes, initializePi } from "@/lib/pi-auth";
 
 export interface PiPaymentMetadata {
   type: "membership";
