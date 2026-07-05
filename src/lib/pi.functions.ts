@@ -75,44 +75,91 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
     }
 
 
-    // 2) Upsert pi_users row.
-    await time("db:upsert-pi_users", async () => {
-      const { error: upsertErr } = await supabaseAdmin
+    // Helper: rich supabase error logger.
+    const logSbError = (stage: string, error: unknown) => {
+      const e = error as { code?: string; message?: string; details?: string; hint?: string } | null;
+      console.error(`[AUTH-SRV] Supabase Error @${stage}`, {
+        code: e?.code,
+        message: e?.message,
+        details: e?.details,
+        hint: e?.hint,
+      });
+    };
+    const sbErrMsg = (stage: string, error: unknown): string => {
+      const e = error as { code?: string; message?: string; details?: string; hint?: string } | null;
+      const isDev = process.env.NODE_ENV !== "production";
+      const detail = `code=${e?.code ?? "?"} message=${e?.message ?? "?"} details=${e?.details ?? "?"} hint=${e?.hint ?? "?"}`;
+      return isDev ? `DB_${stage}_FAILED: ${detail}` : `DB_${stage}_FAILED`;
+    };
+
+    // 2) SELECT-then-INSERT/UPDATE pi_users row (avoid blind upsert).
+    await time("db:persist-pi_users", async () => {
+      const { data: existing, error: selErr } = await supabaseAdmin
         .from("pi_users")
-        .upsert(
-          {
-            uid: piMe.uid,
-            username: piMe.username,
-            last_seen_at: new Date().toISOString(),
-          },
-          { onConflict: "uid" },
-        );
-      if (upsertErr) {
-        console.error("[verifyPiAuth] upsert error", upsertErr);
-        throw new Error("DB_UPSERT_FAILED");
+        .select("uid")
+        .eq("uid", piMe.uid)
+        .maybeSingle();
+      if (selErr) {
+        logSbError("select-pi_users", selErr);
+        throw new Error(sbErrMsg("SELECT_PI_USERS", selErr));
+      }
+      log("db:pi_users:select-result", { found: !!existing });
+
+      if (existing) {
+        const { error: updErr } = await supabaseAdmin
+          .from("pi_users")
+          .update({ username: piMe.username, last_seen_at: new Date().toISOString() })
+          .eq("uid", piMe.uid);
+        if (updErr) {
+          logSbError("update-pi_users", updErr);
+          throw new Error(sbErrMsg("UPDATE_PI_USERS", updErr));
+        }
+        log("db:pi_users:updated");
+      } else {
+        const { error: insErr } = await supabaseAdmin
+          .from("pi_users")
+          .insert({ uid: piMe.uid, username: piMe.username, last_seen_at: new Date().toISOString() });
+        if (insErr) {
+          logSbError("insert-pi_users", insErr);
+          throw new Error(sbErrMsg("INSERT_PI_USERS", insErr));
+        }
+        log("db:pi_users:inserted");
       }
     });
 
     // 3) Bootstrap: if no admin exists yet, grant this user admin.
     const adminCount = await time("db:count-admins", async () => {
-      const { count } = await supabaseAdmin
+      const { count, error } = await supabaseAdmin
         .from("user_roles")
         .select("*", { count: "exact", head: true })
         .eq("role", "admin");
+      if (error) logSbError("count-admins", error);
       return count ?? 0;
     });
-    if (adminCount === 0) {
-      await time("db:grant-admin", async () => {
-        await supabaseAdmin
-          .from("user_roles")
-          .upsert({ user_id: piMe.uid, role: "admin" }, { onConflict: "user_id,role" });
-      });
-    }
-    await time("db:grant-user", async () => {
-      await supabaseAdmin
+    const grantRole = async (role: "admin" | "user") => {
+      const { data: existingRole, error: selErr } = await supabaseAdmin
         .from("user_roles")
-        .upsert({ user_id: piMe.uid, role: "user" }, { onConflict: "user_id,role" });
-    });
+        .select("id")
+        .eq("user_id", piMe.uid)
+        .eq("role", role)
+        .maybeSingle();
+      if (selErr) {
+        logSbError(`select-role-${role}`, selErr);
+        throw new Error(sbErrMsg(`SELECT_ROLE_${role.toUpperCase()}`, selErr));
+      }
+      if (existingRole) return;
+      const { error: insErr } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: piMe.uid, role });
+      if (insErr) {
+        logSbError(`insert-role-${role}`, insErr);
+        throw new Error(sbErrMsg(`INSERT_ROLE_${role.toUpperCase()}`, insErr));
+      }
+    };
+    if (adminCount === 0) {
+      await time("db:grant-admin", () => grantRole("admin"));
+    }
+    await time("db:grant-user", () => grantRole("user"));
 
     // 4) Determine admin flag & join date.
     const roles = await time("db:select-roles", async () => {
