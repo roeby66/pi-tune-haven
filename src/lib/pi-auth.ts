@@ -280,6 +280,7 @@ export async function authenticatePi(): Promise<PiUser> {
       lastStep: "calling-authenticate",
     });
 
+    console.log("[AUTH] Requested scopes:", DEFAULT_SCOPES);
     authLog("Pi.authenticate:call", { scopes: DEFAULT_SCOPES });
     const stopAuth = stageTimer("Pi.authenticate", { scopes: DEFAULT_SCOPES });
 
