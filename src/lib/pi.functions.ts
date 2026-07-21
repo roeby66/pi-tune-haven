@@ -89,8 +89,8 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
       const e = error as { code?: string; message?: string; details?: string; hint?: string } | null;
       const isDev = process.env.NODE_ENV !== "production";
       const detail = `code=${e?.code ?? "?"} message=${e?.message ?? "?"} details=${e?.details ?? "?"} hint=${e?.hint ?? "?"}`;
-      return isDev ? `DB_${stage}_FAILED: ${detail}` : `DB_${stage}_FAILED`;
-    };
+
+return `DB_${stage}_FAILED: ${detail}`;
 
     // 2) SELECT-then-INSERT/UPDATE pi_users row (avoid blind upsert).
     await time("db:persist-pi_users", async () => {
