@@ -93,7 +93,11 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
 return `DB_${stage}_FAILED: ${detail}`;
 
     // 2) SELECT-then-INSERT/UPDATE pi_users row (avoid blind upsert).
-    await time("db:persist-pi_users", async () => {
+    export const something = createServerFn({
+  method: "POST"
+}).handler(async () => {
+  await supabase...
+});
       const { data: existing, error: selErr } = await supabaseAdmin
         .from("pi_users")
         .select("uid")
