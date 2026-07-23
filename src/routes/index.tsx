@@ -15,7 +15,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Sign in with your Pi Network account to access MyPiMusic — streaming and promotion for Pi Pioneers.",
+          "Sign in with your Pi Network account to access MyPiMusic — the music streaming and promotion platform built exclusively for Pi Pioneers.",
       },
       { property: "og:url", content: "https://pi-tune-haven.lovable.app/" },
       { property: "og:type", content: "website" },
