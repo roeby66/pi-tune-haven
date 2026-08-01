@@ -21,6 +21,14 @@ import {
 } from "@/lib/payments.functions";
 import { createPiPayment } from "@/lib/pi-payments";
 import { isPiBrowser } from "@/lib/pi-auth";
+import {
+  payDiagStart,
+  payDiagStage,
+  payDiagFact,
+  payDiagError,
+  payDiagFinish,
+} from "@/lib/payment-diagnostics";
+
 
 export const Route = createFileRoute("/_authenticated/membership")({
   head: () => ({
