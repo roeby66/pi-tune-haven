@@ -321,4 +321,54 @@ function MembershipPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" /> Payment Failed
-            </DialogTitle>
+            </DialogTitle>
+            <DialogDescription>
+              {flow.kind === "failed" ? flow.message : "Something went wrong."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setFlow({ kind: "idle" })}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Network error */}
+      <Dialog
+        open={flow.kind === "network_error"}
+        onOpenChange={(o) => !o && setFlow({ kind: "idle" })}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Network Error
+            </DialogTitle>
+            <DialogDescription>
+              Could not reach the Pi network. Please check your connection and try again.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setFlow({ kind: "idle" })}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={highlight ? "font-bold text-gradient-gold" : "font-semibold"}>{value}</span>
+    </div>
+  );
+}
+
