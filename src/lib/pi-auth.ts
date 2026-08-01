@@ -1,6 +1,7 @@
 // Pi Network authentication wrapper.
 // Docs: https://github.com/pi-apps/pi-platform-docs
 import { authLog, authWarn, authError, stageTimer, logEnvironmentSnapshot } from "./auth-diagnostics";
+import { authDiagStage, authDiagError, captureSdkSnapshot } from "./auth-diagnostic-logger";
 
 
 export interface PiUser {
@@ -169,6 +170,7 @@ export function initializePi(): Promise<void> {
     return initPromise;
   }
   initPromise = (async () => {
+    authDiagStage("INITIALIZE_PI");
     updateDebug({ initStarted: true, lastStep: "loading-sdk", lastError: null });
     const stopInject = stageTimer("injectPiSdkScript");
     try {
@@ -195,11 +197,13 @@ export function initializePi(): Promise<void> {
       throw new Error("SDK_UNAVAILABLE");
     }
     const Pi = window.Pi!;
+    authDiagStage("SDK_DETECTED", { sdk: captureSdkSnapshot() });
     updateDebug({ sdkLoaded: true, lastStep: "calling-init" });
     const stopInit = stageTimer("Pi.init", { version: "2.0", sandbox: false });
     try {
       await Promise.resolve(Pi.init({ version: "2.0", sandbox: false }));
       stopInit({ ok: true });
+      authDiagStage("PI_INIT_COMPLETED");
       updateDebug({ initCompleted: true, lastStep: "init-completed" });
     } catch (e) {
       stopInit({ ok: false });
@@ -283,6 +287,7 @@ export async function authenticatePi(): Promise<PiUser> {
     console.log("[AUTH] Requested scopes:", DEFAULT_SCOPES);
     authLog("Pi.authenticate:call", { scopes: DEFAULT_SCOPES });
     const stopAuth = stageTimer("Pi.authenticate", { scopes: DEFAULT_SCOPES });
+    authDiagStage("AUTHENTICATE_CALLED", { scopes: DEFAULT_SCOPES });
 
     let result: PiAuthResult;
     try {
@@ -293,6 +298,8 @@ export async function authenticatePi(): Promise<PiUser> {
         ),
       ]);
       stopAuth({ ok: true, uid: result?.user?.uid, hasToken: !!result?.accessToken });
+      authDiagStage("USER_APPROVED", { uid: result?.user?.uid });
+      authDiagStage("AUTH_CALLBACK_RECEIVED", { hasToken: !!result?.accessToken });
       // Pi SDK resolves only when all requested scopes are granted, so treat
       // the requested scopes as the granted set.
       const granted = DEFAULT_SCOPES;
@@ -308,6 +315,7 @@ export async function authenticatePi(): Promise<PiUser> {
       const raw = (err as Error)?.message ?? "";
       const message = raw.toLowerCase();
       authError("Pi.authenticate", err);
+      authDiagError("Pi.authenticate", err);
       updateDebug({ lastError: raw || "AUTH_FAILED", lastStep: "authenticate-error" });
       if (raw === "AUTH_TIMEOUT") throw new Error("AUTH_TIMEOUT");
       if (message.includes("cancel")) throw new Error("AUTH_CANCELLED");

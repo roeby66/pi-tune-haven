@@ -19,6 +19,14 @@ import {
 } from "@/lib/pi-auth";
 import { verifyPiAuth, getPiSession, signOutPi } from "@/lib/pi.functions";
 import { authStart, authLog, authError, stageTimer } from "@/lib/auth-diagnostics";
+import {
+  authDiagStart,
+  authDiagStage,
+  authDiagFact,
+  authDiagError,
+  authDiagFinish,
+  authDiagVerifyCookie,
+} from "@/lib/auth-diagnostic-logger";
 
 
 export interface AppUser {
@@ -77,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     authStart("signIn");
+    authDiagStart("login-button");
     setError(null);
     setStatus("loading");
     const stopFlow = stageTimer("signIn:total");
@@ -84,6 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const stopPi = stageTimer("authenticatePi");
       const piUser: PiUser = await authenticatePi();
       stopPi({ uid: piUser.uid, tokenLen: piUser.accessToken?.length ?? 0 });
+      authDiagStage("ACCESS_TOKEN_RECEIVED", { tokenLen: piUser.accessToken?.length ?? 0 });
+      authDiagFact("accessTokenReceived", true);
+      authDiagFact("accessTokenLength", piUser.accessToken?.length ?? 0);
       authLog("pi-user-returned-to-context", {
         uid: piUser.uid,
         username: piUser.username,
@@ -91,16 +103,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       // Server-side verification with Pi API + session cookie.
       const stopVerify = stageTimer("verifyPiAuth (serverFn)");
+      authDiagStage("BACKEND_AUTH_REQUEST_STARTED");
+      authDiagStage("COOKIE_WRITE_STARTED");
+      authDiagStage("SUPABASE_SESSION_STARTED");
       const verified = await verifyPiAuth({ data: { accessToken: piUser.accessToken } });
+      authDiagStage("BACKEND_AUTH_RESPONSE", { uid: verified.uid, isAdmin: verified.isAdmin });
+      authDiagStage("COOKIE_WRITE_COMPLETED");
+      authDiagVerifyCookie();
+      authDiagStage("COOKIE_READ_VERIFIED");
+      authDiagStage("SUPABASE_SESSION_COMPLETED");
+      authDiagFact("sessionCreated", true);
+      authDiagFact("userId", verified.uid);
+      authDiagFact("username", verified.username);
       stopVerify({ uid: verified.uid, isAdmin: verified.isAdmin });
       authLog("server-verified", { ...verified });
+      authDiagStage("USER_PROFILE_LOADING");
       setUser(verified);
       setStatus("authenticated");
+      authDiagStage("USER_PROFILE_LOADED");
+      authDiagStage("AUTH_SUCCESS");
+      authDiagStage("REDIRECT_STARTED", { targetRoute: "/home" });
+      authDiagFact("targetRoute", "/home");
       stopFlow({ ok: true });
     } catch (err) {
       stopFlow({ ok: false });
       const raw = (err as Error)?.message || "AUTH_FAILED";
       authError("signIn", err);
+      authDiagError("signIn", err);
+      authDiagFinish(raw.includes("TIMEOUT") ? "TIMEOUT" : "FAILED");
 
       // If it's a known short code, translate; otherwise show the raw server error.
       const known = /^(PI_BROWSER_REQUIRED|SDK_UNAVAILABLE|SDK_LOAD_FAILED|AUTH_CANCELLED|AUTH_TIMEOUT|NETWORK_ERROR|INIT_TIMEOUT|INIT_FAILED|AUTH_FAILED)$/;
