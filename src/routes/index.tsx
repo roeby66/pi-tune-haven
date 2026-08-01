@@ -1,6 +1,8 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { LoginScreen } from "@/components/LoginScreen";
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
+import { authDiagStage, authDiagFact, authDiagFinish } from "@/lib/auth-diagnostic-logger";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,6 +29,13 @@ export const Route = createFileRoute("/")({
 
 function IndexPage() {
   const { status } = useAuth();
+  useEffect(() => {
+    if (status === "authenticated") {
+      authDiagStage("REDIRECT_COMPLETED", { route: "/home" });
+      authDiagFact("redirectCompleted", true);
+      authDiagFinish("SUCCESS");
+    }
+  }, [status]);
   if (status === "authenticated") {
     return <Navigate to="/home" replace />;
   }
