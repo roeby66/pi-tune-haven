@@ -3,6 +3,8 @@
 // all activation is done server-side after Pi Platform verification.
 
 import { ensurePiScopes, initializePi } from "@/lib/pi-auth";
+import { payDiagStage, payDiagError } from "@/lib/payment-diagnostics";
+
 
 export interface PiPaymentMetadata {
   type: "membership";
@@ -33,7 +35,6 @@ export async function createPiPayment(
   callbacks: PiPaymentCallbacks,
 ): Promise<void> {
   await initializePi();
-  await initializePi();
   // Guarantee the current Pi session includes the "payments" scope. If the
   // cached session was created without it, ensurePiScopes will invalidate the
   // session and force a fresh Pi.authenticate() with the full scope set.
@@ -42,8 +43,11 @@ export async function createPiPayment(
     | (PiWithPayments & Record<string, unknown>)
     | undefined;
   if (!Pi || typeof Pi.createPayment !== "function") {
+    payDiagError("CREATE_PAYMENT_CALLED", new Error("PI_PAYMENTS_UNAVAILABLE"));
     throw new Error("PI_PAYMENTS_UNAVAILABLE");
   }
   console.log("[PiPayments] createPayment", request);
+  payDiagStage("CREATE_PAYMENT_CALLED", { amount: request.amount, memo: request.memo });
   Pi.createPayment(request, callbacks);
 }
+

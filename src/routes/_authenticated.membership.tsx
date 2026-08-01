@@ -21,6 +21,14 @@ import {
 } from "@/lib/payments.functions";
 import { createPiPayment } from "@/lib/pi-payments";
 import { isPiBrowser } from "@/lib/pi-auth";
+import {
+  payDiagStart,
+  payDiagStage,
+  payDiagFact,
+  payDiagError,
+  payDiagFinish,
+} from "@/lib/payment-diagnostics";
+
 
 export const Route = createFileRoute("/_authenticated/membership")({
   head: () => ({
@@ -58,71 +66,88 @@ function MembershipPage() {
     mutationFn: (v: { paymentId: string }) => cancelMembershipPayment({ data: v }),
   });
 
-  async function startPayment(plan: MembershipPlan) {
-    alert(
-  JSON.stringify({
-    isPiBrowser: isPiBrowser(),
-    hasPi: !!window.Pi,
-    hasCreatePayment: !!window.Pi?.createPayment,
-  })
-);
-    setFlow({ kind: "processing", plan, step: "Opening Pi Wallet…" });
-    try {
+  async function startPayment(plan: MembershipPlan) {
+    payDiagStart({ planId: plan.id, planName: plan.name, isPiBrowser: isPiBrowser() });
+    payDiagFact("isPiBrowser", isPiBrowser());
+    payDiagFact("planName", plan.name);
+    payDiagFact("amount", Number(plan.price));
+    setFlow({ kind: "processing", plan, step: "Opening Pi Wallet…" });
+    try {
+      const request = {
+        amount: Number(plan.price),
+        memo: `MyPiMusic ${plan.display_name} (${plan.billing_cycle})`,
+        metadata: { type: "membership" as const, plan_id: plan.id, plan_name: plan.name },
+      };
+      payDiagStage("PAYMENT_REQUEST_CREATED", request);
 
-      await createPiPayment(
-        {
-          amount: Number(plan.price),
-          memo: `MyPiMusic ${plan.display_name} (${plan.billing_cycle})`,
-          metadata: { type: "membership", plan_id: plan.id, plan_name: plan.name },
-        },
-        {
-          onReadyForServerApproval: async (paymentId) => {
-            setFlow({ kind: "processing", plan, step: "Approving on server…" });
-            try {
-              await approve.mutateAsync({ paymentId, planId: plan.id });
-            } catch (e) {
-              setFlow({ kind: "failed", message: (e as Error).message });
-            }
-          },
-          onReadyForServerCompletion: async (paymentId, txid) => {
-            setFlow({ kind: "processing", plan, step: "Verifying payment on Pi Platform…" });
-            try {
-              await complete.mutateAsync({ paymentId, txid });
-              qc.invalidateQueries({ queryKey: ["membership"] });
-              setFlow({ kind: "success", plan });
-            } catch (e) {
-              setFlow({ kind: "failed", message: (e as Error).message });
-            }
-          },
-          onCancel: async (paymentId) => {
-            try {
-              await cancel.mutateAsync({ paymentId });
-            } catch {
-              /* noop */
-            }
-            setFlow({ kind: "cancelled" });
-          },
-          onError: (error) => {
-            const msg = error?.message || "";
-            if (/network|fetch|offline/i.test(msg)) {
-              setFlow({ kind: "network_error" });
-            } else {
-              setFlow({ kind: "failed", message: msg || "Unknown error" });
-            }
-          },
-        },
-      );
-    } catch (e) {
-      const msg = (e as Error).message || "";
-      if (msg === "PI_PAYMENTS_UNAVAILABLE") {
-        setFlow({ kind: "failed", message: "Pi Payments SDK is not available. Open inside Pi Browser." });
-      } else if (/network|fetch/i.test(msg)) {
-        setFlow({ kind: "network_error" });
-      } else {
-        setFlow({ kind: "failed", message: msg || "Failed to start payment" });
-      }
-    }
-  }
+      await createPiPayment(request, {
+        onReadyForServerApproval: async (paymentId) => {
+          payDiagStage("ON_READY_FOR_SERVER_APPROVAL", { paymentId });
+          payDiagFact("paymentId", paymentId);
+          setFlow({ kind: "processing", plan, step: "Approving on server…" });
+          try {
+            await approve.mutateAsync({ paymentId, planId: plan.id });
+            payDiagStage("ON_READY_FOR_SERVER_APPROVAL_COMPLETED", { paymentId });
+          } catch (e) {
+            payDiagError("ON_READY_FOR_SERVER_APPROVAL", e);
+            setFlow({ kind: "failed", message: (e as Error).message });
+            payDiagFinish("FAILED");
+          }
+        },
+        onReadyForServerCompletion: async (paymentId, txid) => {
+          payDiagStage("ON_READY_FOR_SERVER_COMPLETION", { paymentId, txid });
+          payDiagFact("txid", txid);
+          setFlow({ kind: "processing", plan, step: "Verifying payment on Pi Platform…" });
+          try {
+            await complete.mutateAsync({ paymentId, txid });
+            payDiagStage("ON_READY_FOR_SERVER_COMPLETION_COMPLETED", { paymentId });
+            qc.invalidateQueries({ queryKey: ["membership"] });
+            setFlow({ kind: "success", plan });
+            payDiagStage("PAYMENT_COMPLETED", { paymentId, txid });
+            payDiagFinish("SUCCESS");
+          } catch (e) {
+            payDiagError("ON_READY_FOR_SERVER_COMPLETION", e);
+            setFlow({ kind: "failed", message: (e as Error).message });
+            payDiagFinish("FAILED");
+          }
+        },
+        onCancel: async (paymentId) => {
+          payDiagStage("ON_CANCEL", { paymentId });
+          try {
+            await cancel.mutateAsync({ paymentId });
+          } catch {
+            /* noop */
+          }
+          setFlow({ kind: "cancelled" });
+          payDiagFinish("CANCELLED");
+        },
+        onError: (error) => {
+          payDiagStage("ON_ERROR", { message: error?.message });
+          payDiagError("ON_ERROR", error);
+          const msg = error?.message || "";
+          if (/network|fetch|offline/i.test(msg)) {
+            setFlow({ kind: "network_error" });
+          } else {
+            setFlow({ kind: "failed", message: msg || "Unknown error" });
+          }
+          payDiagFinish("FAILED");
+        },
+      });
+      payDiagStage("CREATE_PAYMENT_RETURNED");
+    } catch (e) {
+      payDiagError("CREATE_PAYMENT", e);
+      const msg = (e as Error).message || "";
+      if (msg === "PI_PAYMENTS_UNAVAILABLE") {
+        setFlow({ kind: "failed", message: "Pi Payments SDK is not available. Open inside Pi Browser." });
+      } else if (/network|fetch/i.test(msg)) {
+        setFlow({ kind: "network_error" });
+      } else {
+        setFlow({ kind: "failed", message: msg || "Failed to start payment" });
+      }
+      payDiagFinish("FAILED");
+    }
+  }
+
 
   const currentPlanName = mine.data?.plan_name;
   const list = plans.data ?? [];
