@@ -19,6 +19,14 @@ import {
 } from "@/lib/pi-auth";
 import { verifyPiAuth, getPiSession, signOutPi } from "@/lib/pi.functions";
 import { authStart, authLog, authError, stageTimer } from "@/lib/auth-diagnostics";
+import {
+  authDiagStart,
+  authDiagStage,
+  authDiagFact,
+  authDiagError,
+  authDiagFinish,
+  authDiagVerifyCookie,
+} from "@/lib/auth-diagnostic-logger";
 
 
 export interface AppUser {
