@@ -3,6 +3,8 @@
 // all activation is done server-side after Pi Platform verification.
 
 import { ensurePiScopes, initializePi } from "@/lib/pi-auth";
+import { payDiagStage, payDiagError } from "@/lib/payment-diagnostics";
+
 
 export interface PiPaymentMetadata {
   type: "membership";
