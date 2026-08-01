@@ -87,17 +87,12 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
     };
     const sbErrMsg = (stage: string, error: unknown): string => {
       const e = error as { code?: string; message?: string; details?: string; hint?: string } | null;
-      const isDev = process.env.NODE_ENV !== "production";
       const detail = `code=${e?.code ?? "?"} message=${e?.message ?? "?"} details=${e?.details ?? "?"} hint=${e?.hint ?? "?"}`;
-
-return `DB_${stage}_FAILED: ${detail}`;
+      return `DB_${stage}_FAILED: ${detail}`;
+    };
 
     // 2) SELECT-then-INSERT/UPDATE pi_users row (avoid blind upsert).
-    export const something = createServerFn({
-  method: "POST"
-}).handler(async () => {
-  await supabase...
-});
+    await time("db:pi_users", async () => {
       const { data: existing, error: selErr } = await supabaseAdmin
         .from("pi_users")
         .select("uid")
@@ -130,6 +125,7 @@ return `DB_${stage}_FAILED: ${detail}`;
         log("db:pi_users:inserted");
       }
     });
+
 
     // 3) Bootstrap: if no admin exists yet, grant this user admin.
     const adminCount = await time("db:count-admins", async () => {
