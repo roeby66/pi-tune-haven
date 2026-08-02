@@ -252,6 +252,7 @@ export type Database = {
       }
       pi_users: {
         Row: {
+          auth_user_id: string | null
           avatar_url: string | null
           joined_at: string
           last_seen_at: string
@@ -260,6 +261,7 @@ export type Database = {
           wallet_address: string | null
         }
         Insert: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           joined_at?: string
           last_seen_at?: string
@@ -268,6 +270,7 @@ export type Database = {
           wallet_address?: string | null
         }
         Update: {
+          auth_user_id?: string | null
           avatar_url?: string | null
           joined_at?: string
           last_seen_at?: string
@@ -460,6 +463,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_pi_uid: { Args: never; Returns: string }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"]; _uid: string }
         Returns: boolean
