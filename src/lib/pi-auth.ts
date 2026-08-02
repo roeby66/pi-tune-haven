@@ -31,17 +31,14 @@ const DEFAULT_SCOPES: PiAuthScope[] = ["username", "payments", "wallet_address"]
 const REQUIRED_SCOPES: PiAuthScope[] = ["username", "payments"];
 const AUTH_TIMEOUT_MS = 20000;
 const SDK_URL = "https://sdk.minepi.com/pi-sdk.js";
-const STORAGE_KEY = "mypimusic.pi_user";
-const SCOPES_KEY = "mypimusic.pi_scopes";
+// NOTE: no localStorage-based auth state. The only sources of truth are the
+// Supabase session (browser) and the signed httpOnly Pi session cookie (server).
+// In-memory only, reset on reload:
+let grantedScopes: PiAuthScope[] = [];
+let currentPiUser: PiUser | null = null;
 
 export function getGrantedScopes(): PiAuthScope[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(SCOPES_KEY);
-    return raw ? (JSON.parse(raw) as PiAuthScope[]) : [];
-  } catch {
-    return [];
-  }
+  return grantedScopes;
 }
 
 export function hasScope(scope: PiAuthScope): boolean {
@@ -52,18 +49,12 @@ export function hasScope(scope: PiAuthScope): boolean {
 export async function ensurePiScopes(required: PiAuthScope[] = REQUIRED_SCOPES): Promise<PiUser> {
   const granted = getGrantedScopes();
   const missing = required.filter((s) => !granted.includes(s));
-  if (missing.length === 0) {
-    const cached = getCurrentUser();
-    if (cached) return cached;
+  if (missing.length === 0 && currentPiUser) {
+    return currentPiUser;
   }
   console.log("[AUTH] Scope check — granted:", granted, "required:", required, "missing:", missing);
-  // Invalidate stale session and force a fresh authenticate with full scopes.
-  try {
-    window.localStorage.removeItem(STORAGE_KEY);
-    window.localStorage.removeItem(SCOPES_KEY);
-  } catch {
-    /* noop */
-  }
+  grantedScopes = [];
+  currentPiUser = null;
   return authenticatePi();
 }
 
@@ -304,11 +295,7 @@ export async function authenticatePi(): Promise<PiUser> {
       // the requested scopes as the granted set.
       const granted = DEFAULT_SCOPES;
       console.log("[AUTH] Granted scopes:", granted);
-      try {
-        window.localStorage.setItem(SCOPES_KEY, JSON.stringify(granted));
-      } catch {
-        /* noop */
-      }
+      grantedScopes = granted;
       updateDebug({ authCompleted: true, lastStep: "authenticate-returned" });
     } catch (err) {
       stopAuth({ ok: false });
@@ -344,11 +331,7 @@ export async function authenticatePi(): Promise<PiUser> {
     });
     authLog("pi-user-stored", { uid: user.uid, username: user.username });
 
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-    } catch {
-      /* storage not available */
-    }
+    currentPiUser = user;
     return user;
   })();
 
@@ -361,23 +344,13 @@ export async function authenticatePi(): Promise<PiUser> {
 
 
 export function logoutPi(): void {
-  try {
-    window.localStorage.removeItem(STORAGE_KEY);
-    window.localStorage.removeItem(SCOPES_KEY);
-  } catch {
-    /* noop */
-  }
+  grantedScopes = [];
+  currentPiUser = null;
+  console.log("[AUTH] logoutPi: in-memory Pi state cleared");
 }
 
 export function getCurrentUser(): PiUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as PiUser;
-  } catch {
-    return null;
-  }
+  return currentPiUser;
 }
 
 export function describeAuthError(code: string): string {
