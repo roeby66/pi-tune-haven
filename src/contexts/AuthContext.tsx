@@ -18,6 +18,7 @@ import {
   type PiUser,
 } from "@/lib/pi-auth";
 import { verifyPiAuth, getPiSession, signOutPi } from "@/lib/pi.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { authStart, authLog, authError, stageTimer } from "@/lib/auth-diagnostics";
 import {
   authDiagStart,
