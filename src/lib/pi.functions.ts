@@ -91,8 +91,22 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
       return `DB_${stage}_FAILED: ${detail}`;
     };
 
-    // 2) SELECT-then-INSERT/UPDATE pi_users row (avoid blind upsert).
+    // 2) Upsert pi_users row by uid; never fail login on duplicates.
     await time("db:pi_users", async () => {
+      const { error: upsertErr } = await supabaseAdmin
+        .from("pi_users")
+        .upsert(
+          { uid: piMe.uid, username: piMe.username, last_seen_at: new Date().toISOString() },
+          { onConflict: "uid" },
+        );
+      if (!upsertErr) {
+        log("db:pi_users:upserted");
+        return;
+      }
+      logSbError("upsert-pi_users", upsertErr);
+
+      // Fallback: a legacy row may still hold this username (Pi app recreated
+      // => new uid for the same Pioneer). Ensure a row exists for this uid and continue.
       const { data: existing, error: selErr } = await supabaseAdmin
         .from("pi_users")
         .select("uid")
@@ -102,29 +116,28 @@ export const verifyPiAuth = createServerFn({ method: "POST" })
         logSbError("select-pi_users", selErr);
         throw new Error(sbErrMsg("SELECT_PI_USERS", selErr));
       }
-      log("db:pi_users:select-result", { found: !!existing });
-
       if (existing) {
-        const { error: updErr } = await supabaseAdmin
+        await supabaseAdmin
           .from("pi_users")
-          .update({ username: piMe.username, last_seen_at: new Date().toISOString() })
+          .update({ last_seen_at: new Date().toISOString() })
           .eq("uid", piMe.uid);
-        if (updErr) {
-          logSbError("update-pi_users", updErr);
-          throw new Error(sbErrMsg("UPDATE_PI_USERS", updErr));
-        }
-        log("db:pi_users:updated");
-      } else {
-        const { error: insErr } = await supabaseAdmin
-          .from("pi_users")
-          .insert({ uid: piMe.uid, username: piMe.username, last_seen_at: new Date().toISOString() });
-        if (insErr) {
-          logSbError("insert-pi_users", insErr);
-          throw new Error(sbErrMsg("INSERT_PI_USERS", insErr));
-        }
-        log("db:pi_users:inserted");
+        log("db:pi_users:touched-existing");
+        return;
       }
+      const { error: insErr } = await supabaseAdmin
+        .from("pi_users")
+        .insert({
+          uid: piMe.uid,
+          username: piMe.username,
+          last_seen_at: new Date().toISOString(),
+        });
+      if (insErr) {
+        logSbError("insert-pi_users", insErr);
+        throw new Error(sbErrMsg("INSERT_PI_USERS", insErr));
+      }
+      log("db:pi_users:inserted");
     });
+
 
 
     // 3) Bootstrap: if no admin exists yet, grant this user admin.
