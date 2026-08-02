@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { CheckCircle2, Crown, Loader2, Sparkles, XCircle, AlertTriangle } from "lucide-react";
@@ -73,6 +74,23 @@ function MembershipPage() {
     payDiagFact("amount", Number(plan.price));
     setFlow({ kind: "processing", plan, step: "Opening Pi Wallet…" });
     try {
+      // A verified Supabase session is required before any payment can start —
+      // server-side approval/completion runs under this identity.
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log("[PAY] session precheck", {
+        hasSupabaseSession: !!sessionData.session,
+        userId: sessionData.session?.user?.id ?? null,
+      });
+      if (!sessionData.session) {
+        payDiagError("PAYMENT_BUTTON_CLICKED", new Error("NO_SUPABASE_SESSION"));
+        setFlow({
+          kind: "failed",
+          message: "Your session expired. Please sign in with Pi again before paying.",
+        });
+        payDiagFinish("FAILED");
+        return;
+      }
+
       const request = {
         amount: Number(plan.price),
         memo: `MyPiMusic ${plan.display_name} (${plan.billing_cycle})`,

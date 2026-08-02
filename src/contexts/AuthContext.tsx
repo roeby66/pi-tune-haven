@@ -18,6 +18,7 @@ import {
   type PiUser,
 } from "@/lib/pi-auth";
 import { verifyPiAuth, getPiSession, signOutPi } from "@/lib/pi.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { authStart, authLog, authError, stageTimer } from "@/lib/auth-diagnostics";
 import {
   authDiagStart,
@@ -34,6 +35,7 @@ export interface AppUser {
   username: string;
   isAdmin: boolean;
   joinedAt: string;
+  authUserId?: string | null;
 }
 
 interface AuthContextValue {
@@ -42,6 +44,8 @@ interface AuthContextValue {
   isPiBrowser: boolean;
   isSdkReady: boolean;
   isAdmin: boolean;
+  /** True once a real Supabase Auth session exists in this browser. */
+  hasSupabaseSession: boolean;
   error: string | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -54,18 +58,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
   const [isSdkReady, setSdkReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasSupabaseSession, setHasSupabaseSession] = useState(false);
   const inFlightRef = useRef(false);
 
   // Rehydrate from server session cookie + best-effort SDK init.
   useEffect(() => {
     let cancelled = false;
+    console.log("[AUTH] rehydrate: checking Supabase session + Pi cookie");
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      console.log("[AUTH] rehydrate: supabase session", {
+        present: !!data.session,
+        userId: data.session?.user?.id ?? null,
+      });
+      setHasSupabaseSession(!!data.session);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[AUTH] supabase.onAuthStateChange", { event, present: !!session });
+      setHasSupabaseSession(!!session);
+    });
+
     getPiSession()
       .then((sess) => {
         if (cancelled) return;
         if (sess) {
+          console.log("[AUTH] rehydrate: pi session cookie valid", { uid: sess.uid });
           setUser(sess);
           setStatus("authenticated");
         } else {
+          console.log("[AUTH] rehydrate: no pi session cookie");
           setStatus("unauthenticated");
         }
       })
@@ -78,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
   }, []);
 
@@ -116,9 +139,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authDiagFact("userId", verified.uid);
       authDiagFact("username", verified.username);
       stopVerify({ uid: verified.uid, isAdmin: verified.isAdmin });
+
+      // Install the real Supabase Auth session so every client query and RLS
+      // policy runs under auth.uid().
+      console.log("[AUTH] STEP: installing Supabase session", {
+        authUserId: verified.authUserId,
+        expiresAt: verified.supabase.expiresAt,
+      });
+      const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+        access_token: verified.supabase.accessToken,
+        refresh_token: verified.supabase.refreshToken,
+      });
+      if (sessionError || !sessionData.session) {
+        console.error("[AUTH] Supabase setSession failed", sessionError?.message);
+        throw new Error(`SUPABASE_SESSION_FAILED: ${sessionError?.message ?? "no session"}`);
+      }
+      setHasSupabaseSession(true);
+      console.log("[AUTH] Supabase session active", {
+        userId: sessionData.session.user.id,
+      });
       authLog("server-verified", { ...verified });
       authDiagStage("USER_PROFILE_LOADING");
-      setUser(verified);
+      setUser({
+        uid: verified.uid,
+        username: verified.username,
+        isAdmin: verified.isAdmin,
+        joinedAt: verified.joinedAt,
+        authUserId: verified.authUserId,
+      });
       setStatus("authenticated");
       authDiagStage("USER_PROFILE_LOADED");
       authDiagStage("AUTH_SUCCESS");
@@ -149,6 +197,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
+    try {
+      await supabase.auth.signOut();
+      console.log("[AUTH] Supabase session cleared");
+    } catch (e) {
+      console.warn("[AUTH] supabase.signOut failed", e);
+    }
+    setHasSupabaseSession(false);
     logoutPi();
     resetPiInit();
     inFlightRef.current = false;
@@ -164,11 +219,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isPiBrowser: isPiBrowser(),
       isSdkReady,
       isAdmin: !!user?.isAdmin,
+      hasSupabaseSession,
       error,
       signIn,
       signOut,
     }),
-    [user, status, isSdkReady, error, signIn, signOut],
+    [user, status, isSdkReady, hasSupabaseSession, error, signIn, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
