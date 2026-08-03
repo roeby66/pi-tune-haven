@@ -65,33 +65,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     console.log("[AUTH] rehydrate: checking Supabase session + Pi cookie");
-    supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      console.log("[AUTH] rehydrate: supabase session", {
-        present: !!data.session,
-        userId: data.session?.user?.id ?? null,
-      });
-      setHasSupabaseSession(!!data.session);
-    });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       console.log("[AUTH] supabase.onAuthStateChange", { event, present: !!session });
       setHasSupabaseSession(!!session);
     });
 
-    getPiSession()
-      .then((sess) => {
-        if (cancelled) return;
-        if (sess) {
-          console.log("[AUTH] rehydrate: pi session cookie valid", { uid: sess.uid });
-          setUser(sess);
-          setStatus("authenticated");
-        } else {
-          console.log("[AUTH] rehydrate: no pi session cookie");
-          setStatus("unauthenticated");
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      const sbSession = data.session;
+      console.log("[AUTH] rehydrate: supabase session", {
+        present: !!sbSession,
+        userId: sbSession?.user?.id ?? null,
+      });
+      setHasSupabaseSession(!!sbSession);
+
+      let sess = null as Awaited<ReturnType<typeof getPiSession>>;
+      try {
+        sess = await getPiSession();
+      } catch {
+        /* ignore */
+      }
+      if (cancelled) return;
+
+      // Both halves of the identity must be present: the signed Pi cookie
+      // (server functions) AND a live Supabase session (RLS + payments).
+      if (sess && sbSession) {
+        console.log("[AUTH] rehydrate: pi session cookie valid", { uid: sess.uid });
+        setUser(sess);
+        setStatus("authenticated");
+      } else {
+        console.log("[AUTH] rehydrate: incomplete session", {
+          piCookie: !!sess,
+          supabase: !!sbSession,
+        });
+        if (sess && !sbSession) {
+          // Stale cookie without a Supabase session — clear it so the user
+          // gets a clean sign-in instead of failing RLS/payment calls.
+          try {
+            await signOutPi();
+          } catch {
+            /* ignore */
+          }
         }
-      })
-      .catch(() => !cancelled && setStatus("unauthenticated"));
+        setUser(null);
+        setStatus("unauthenticated");
+      }
+    })();
 
     if (isPiBrowser()) {
       initializePi()
@@ -103,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sub.subscription.unsubscribe();
     };
   }, []);
+
 
   const signIn = useCallback(async () => {
     if (inFlightRef.current) return;
