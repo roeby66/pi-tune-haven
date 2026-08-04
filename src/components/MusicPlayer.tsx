@@ -1,7 +1,7 @@
 import { usePlayer } from "@/contexts/PlayerContext";
 import { formatDuration } from "@/lib/types";
-import {
 import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
+import {
   Heart,
   Pause,
   Play,
