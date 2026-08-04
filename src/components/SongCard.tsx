@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Play } from "lucide-react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { formatDuration, type Song } from "@/lib/types";
+import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 
 export function SongCard({ song, queue }: { song: Song; queue?: Song[] }) {
   const { playSong } = usePlayer();
@@ -13,7 +14,7 @@ export function SongCard({ song, queue }: { song: Song; queue?: Song[] }) {
         className="relative block aspect-square overflow-hidden rounded-xl border border-white/10"
       >
         <img
-          src={song.cover}
+          src={song.cover || logoAsset.url}
           alt={song.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           loading="lazy"
@@ -52,7 +53,7 @@ export function SongRow({ song, index, queue }: { song: Song; index?: number; qu
           {index + 1}
         </span>
       )}
-      <img src={song.cover} alt={song.title} className="h-11 w-11 rounded-md object-cover" loading="lazy" />
+      <img src={song.cover || logoAsset.url} alt={song.title} className="h-11 w-11 rounded-md object-cover" loading="lazy" />
       <div className="min-w-0 flex-1">
         <p className={`truncate text-sm font-medium ${active ? "text-primary" : ""}`}>{song.title}</p>
         <p className="truncate text-xs text-muted-foreground">{song.artist}</p>
