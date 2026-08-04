@@ -170,101 +170,114 @@ function MembershipPage() {
   const currentPlanName = mine.data?.plan_name;
   const list = plans.data ?? [];
 
-  return (
-    <div className="space-y-6">
-      <header className="text-center">
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-          Choose your <span className="text-primary">MyPiMusic</span> Membership
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Pay with Test-Pi via the official Pi Wallet. Cancel any time.
-        </p>
-        {mine.data && (
-          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-            <CheckCircle2 className="h-3 w-3" /> Active: {mine.data.membership_level}
-            {mine.data.expires_at && (
-              <span className="opacity-70">
-                · renews {new Date(mine.data.expires_at).toLocaleDateString()}
-              </span>
-            )}
-          </p>
-        )}
-      </header>
+  return (
+    <div className="mx-auto w-full max-w-4xl space-y-8 pb-4">
+      <header className="flex flex-col items-center text-center">
+        <img
+          src={logoAsset.url}
+          alt="MyPiMusic"
+          className="h-16 w-16 rounded-2xl object-cover shadow-purple"
+        />
+        <h1 className="mt-4 text-2xl font-extrabold tracking-tight sm:text-3xl">
+          Choose your <span className="text-primary">MyPiMusic</span> Membership
+        </h1>
+        <p className="mt-2 max-w-md text-sm text-muted-foreground">
+          Pay with Test-Pi via the official Pi Wallet. Cancel any time.
+        </p>
+        {mine.data && (
+          <p className="mt-4 inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary">
+            <CheckCircle2 className="h-3 w-3 shrink-0" /> Active: {mine.data.membership_level}
+            {mine.data.expires_at && (
+              <span className="opacity-70">
+                · renews {new Date(mine.data.expires_at).toLocaleDateString()}
+              </span>
+            )}
+          </p>
+        )}
+      </header>
 
-      {plans.isLoading ? (
-        <div className="flex justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {list.map((plan) => {
-            const isPremium = plan.name.startsWith("premium");
-            const isCurrent = currentPlanName === plan.name;
-            return (
-              <article
-                key={plan.id}
-                className={[
-                  "relative rounded-2xl border p-5 transition-all",
-                  isPremium
-                    ? "border-primary/60 bg-gradient-to-b from-primary/15 via-card to-card shadow-purple"
-                    : "border-white/10 bg-card/70",
-                ].join(" ")}
-              >
-                {isPremium && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary-foreground">
-                    Most popular
-                  </span>
-                )}
-                <div className="flex items-center gap-2">
-                  {isPremium ? (
-                    <Crown className="h-5 w-5 text-primary" />
-                  ) : (
-                    <Sparkles className="h-5 w-5 text-primary/80" />
-                  )}
-                  <h2 className="text-lg font-bold">{plan.display_name}</h2>
-                  {isCurrent && (
-                    <span className="ml-auto rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                      Current
-                    </span>
-                  )}
-                </div>
-                {plan.description && (
-                  <p className="mt-1 text-xs text-muted-foreground">{plan.description}</p>
-                )}
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold text-gradient-gold">
-                    {Number(plan.price).toFixed(2)}
-                  </span>
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    Test-Pi / {plan.billing_cycle}
-                  </span>
-                </div>
-                <ul className="mt-4 space-y-2 text-sm">
-                  {plan.benefits.map((b) => (
-                    <li key={b} className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="mt-5 w-full font-bold"
-                  variant={isPremium ? "default" : "secondary"}
-                  disabled={isCurrent}
-                  onClick={() => setFlow({ kind: "confirm", plan })}
-                >
-                  {isCurrent ? "Currently active" : `Subscribe with Pi`}
-                </Button>
-              </article>
-            );
-          })}
-        </div>
-      )}
+      {plans.isLoading ? (
+        <div className="flex justify-center py-16 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : (
+        <div className="grid items-stretch gap-6 pt-4 sm:grid-cols-2">
+          {list.map((plan) => {
+            const isPremium = plan.name.startsWith("premium");
+            const isCurrent = currentPlanName === plan.name;
+            return (
+              <article
+                key={plan.id}
+                className={[
+                  "relative flex h-full flex-col rounded-3xl border p-6 transition-all",
+                  isPremium
+                    ? "border-primary/60 bg-gradient-to-b from-primary/15 via-card to-card shadow-purple"
+                    : "border-white/10 bg-card/70",
+                ].join(" ")}
+              >
+                {isPremium && (
+                  <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-purple">
+                    Most popular
+                  </span>
+                )}
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+                      isPremium ? "bg-primary/20" : "bg-white/5"
+                    }`}
+                  >
+                    {isPremium ? (
+                      <Crown className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Sparkles className="h-5 w-5 text-primary/80" />
+                    )}
+                  </span>
+                  <h2 className="min-w-0 flex-1 truncate text-lg font-bold">{plan.display_name}</h2>
+                  {isCurrent && (
+                    <span className="shrink-0 rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                      Current
+                    </span>
+                  )}
+                </div>
+                {plan.description && (
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    {plan.description}
+                  </p>
+                )}
+                <div className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-4xl font-extrabold text-gradient-gold">
+                    {Number(plan.price).toFixed(2)}
+                  </span>
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    Test-Pi / {plan.billing_cycle}
+                  </span>
+                </div>
+                <ul className="mt-5 flex-1 space-y-2.5 text-sm">
+                  {plan.benefits.map((b) => (
+                    <li key={b} className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span className="min-w-0">{b}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  className="mt-6 w-full rounded-xl py-5 font-bold"
+                  variant={isPremium ? "default" : "secondary"}
+                  disabled={isCurrent}
+                  onClick={() => setFlow({ kind: "confirm", plan })}
+                >
+                  {isCurrent ? "Currently active" : `Subscribe with Pi`}
+                </Button>
+              </article>
+            );
+          })}
+        </div>
+      )}
 
-      <p className="text-center text-[11px] text-muted-foreground">
-        Payments are processed on the Pi Testnet. MyPiMusic is an independent third-party app and is not
-        affiliated with Pi Network or the Pi Core Team.
-      </p>
+      <p className="mx-auto max-w-md text-center text-[11px] leading-relaxed text-muted-foreground">
+        Payments are processed on the Pi Testnet. MyPiMusic is an independent third-party app and is not
+        affiliated with Pi Network or the Pi Core Team.
+      </p>
 
       {/* Confirm dialog */}
       <Dialog
