@@ -15,6 +15,9 @@ const NAV = [
 export function AppShell() {
   const { user, isAdmin } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navItems = isAdmin
+    ? [...NAV, { to: "/admin", label: "Admin", icon: Shield } as const]
+    : NAV;
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-40">
@@ -84,8 +87,10 @@ export function AppShell() {
       <MusicPlayer />
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/95 backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-5xl grid-cols-5">
-          {NAV.map(({ to, label, icon: Icon }) => {
+        <div
+          className={`mx-auto grid max-w-5xl ${isAdmin ? "grid-cols-6" : "grid-cols-5"}`}
+        >
+          {navItems.map(({ to, label, icon: Icon }) => {
             const active = pathname === to || (to !== "/home" && pathname.startsWith(to));
             return (
               <Link
