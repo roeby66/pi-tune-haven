@@ -1,43 +1,13 @@
 // Server functions: admin-only catalog management.
 import { createServerFn } from "@tanstack/react-start";
 
-async function requireAdmin() {
-  const { requirePiSession } = await import("@/lib/pi-session.server");
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const s = requirePiSession();
-  console.log("[requireAdmin] session ok", { uid: s.uid, username: s.username });
-  const { data, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", s.uid)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (error) {
-    console.error("[requireAdmin] role lookup error", error);
-    throw new Error(`ROLE_LOOKUP_FAILED: ${error.message}`);
-  }
-  if (!data) {
-    console.warn("[requireAdmin] user has no admin role", { uid: s.uid });
-    throw new Error(`FORBIDDEN: user ${s.username} (${s.uid}) is not an admin`);
-  }
-  return { uid: s.uid, username: s.username };
-}
-
-function slugify(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "")
-    .slice(0, 64);
-}
-
 export const uploadSong = createServerFn({ method: "POST" })
   .inputValidator((data: FormData) => {
     if (!(data instanceof FormData)) throw new Error("EXPECTED_FORM_DATA");
     return data;
   })
   .handler(async ({ data }) => {
+    const { requireAdmin, slugify } = await import("@/lib/admin.server");
     const { uid } = await requireAdmin();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -99,7 +69,6 @@ export const uploadSong = createServerFn({ method: "POST" })
       if (coverErr) throw new Error(`COVER_UPLOAD_FAILED: ${coverErr.message}`);
     }
 
-    // Compute duration client-side would be ideal — accept 0 and let player update later.
     const duration = Number(data.get("duration") ?? 0) || 0;
 
     const { data: song, error: insertErr } = await supabaseAdmin
@@ -125,6 +94,7 @@ export const uploadSong = createServerFn({ method: "POST" })
 export const deleteSong = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/admin.server");
     await requireAdmin();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: song } = await supabaseAdmin
@@ -143,6 +113,7 @@ export const deleteSong = createServerFn({ method: "POST" })
   });
 
 export const listAllSongsAdmin = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("@/lib/admin.server");
   await requireAdmin();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
@@ -158,4 +129,158 @@ export const listAllSongsAdmin = createServerFn({ method: "GET" }).handler(async
     createdAt: r.created_at,
     artist: (r as { artists: { name: string } | null }).artists?.name ?? "Unknown",
   }));
+});
+
+export const listArtistsAdmin = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("@/lib/admin.server");
+  await requireAdmin();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("artists")
+    .select("id,name,slug,genre,verified,created_at,songs(id)")
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((a) => ({
+    id: a.id,
+    name: a.name,
+    slug: a.slug,
+    genre: a.genre,
+    verified: a.verified,
+    createdAt: a.created_at,
+    songCount: ((a as { songs: unknown[] | null }).songs ?? []).length,
+  }));
+});
+
+export const setArtistVerified = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string; verified: boolean }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("artists")
+      .update({ verified: data.verified })
+      .eq("id", data.id);
+    if (error) throw new Error(`ARTIST_UPDATE_FAILED: ${error.message}`);
+    return { ok: true };
+  });
+
+export const listUsersAdmin = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("@/lib/admin.server");
+  await requireAdmin();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const [{ data: users }, { data: roles }] = await Promise.all([
+    supabaseAdmin
+      .from("pi_users")
+      .select("uid,username,joined_at,last_seen_at")
+      .order("joined_at", { ascending: false })
+      .limit(200),
+    supabaseAdmin.from("user_roles").select("user_id,role"),
+  ]);
+  const roleMap = new Map<string, string[]>();
+  (roles ?? []).forEach((r) => {
+    roleMap.set(r.user_id, [...(roleMap.get(r.user_id) ?? []), r.role as string]);
+  });
+  return (users ?? []).map((u) => ({
+    uid: u.uid,
+    username: u.username,
+    joinedAt: u.joined_at,
+    lastSeenAt: u.last_seen_at,
+    roles: roleMap.get(u.uid) ?? ["user"],
+  }));
+});
+
+export const setUserAdminRole = createServerFn({ method: "POST" })
+  .inputValidator((data: { uid: string; makeAdmin: boolean }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/admin.server");
+    const me = await requireAdmin();
+    if (me.uid === data.uid && !data.makeAdmin) {
+      throw new Error("CANNOT_REMOVE_OWN_ADMIN_ROLE");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (data.makeAdmin) {
+      const { error } = await supabaseAdmin
+        .from("user_roles")
+        .upsert({ user_id: data.uid, role: "admin" }, { onConflict: "user_id,role" });
+      if (error) throw new Error(`ROLE_GRANT_FAILED: ${error.message}`);
+    } else {
+      const { error } = await supabaseAdmin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", data.uid)
+        .eq("role", "admin");
+      if (error) throw new Error(`ROLE_REVOKE_FAILED: ${error.message}`);
+    }
+    return { ok: true };
+  });
+
+export const listMembershipsAdmin = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("@/lib/admin.server");
+  await requireAdmin();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const [{ data: memberships }, { data: payments }, { data: plans }] = await Promise.all([
+    supabaseAdmin
+      .from("user_memberships")
+      .select("id,user_uid,membership_level,membership_status,started_at,expires_at")
+      .order("created_at", { ascending: false })
+      .limit(200),
+    supabaseAdmin
+      .from("membership_payments")
+      .select("id,payment_id,user_uid,amount,currency,payment_status,created_at")
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabaseAdmin
+      .from("membership_plans")
+      .select("id,name,display_name,price,currency,billing_cycle,is_active")
+      .order("sort_order"),
+  ]);
+  return {
+    memberships: memberships ?? [],
+    payments: payments ?? [],
+    plans: plans ?? [],
+  };
+});
+
+export const getAdminStats = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("@/lib/admin.server");
+  await requireAdmin();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const count = (q: { count: number | null }) => q.count ?? 0;
+  const [songs, artists, users, favorites, plays, activeMembers, topSongs, revenue] =
+    await Promise.all([
+      supabaseAdmin.from("songs").select("id", { count: "exact", head: true }),
+      supabaseAdmin.from("artists").select("id", { count: "exact", head: true }),
+      supabaseAdmin.from("pi_users").select("uid", { count: "exact", head: true }),
+      supabaseAdmin.from("favorites").select("song_id", { count: "exact", head: true }),
+      supabaseAdmin.from("plays").select("id", { count: "exact", head: true }),
+      supabaseAdmin
+        .from("user_memberships")
+        .select("id", { count: "exact", head: true })
+        .eq("membership_status", "active"),
+      supabaseAdmin
+        .from("songs")
+        .select("id,title,plays_count,artists(name)")
+        .order("plays_count", { ascending: false })
+        .limit(5),
+      supabaseAdmin
+        .from("membership_payments")
+        .select("amount")
+        .eq("payment_status", "completed"),
+    ]);
+
+  return {
+    songs: count(songs),
+    artists: count(artists),
+    users: count(users),
+    favorites: count(favorites),
+    plays: count(plays),
+    activeMembers: count(activeMembers),
+    revenue: (revenue.data ?? []).reduce((sum, p) => sum + Number(p.amount), 0),
+    topSongs: (topSongs.data ?? []).map((s) => ({
+      id: s.id,
+      title: s.title,
+      plays: Number(s.plays_count),
+      artist: (s as { artists: { name: string } | null }).artists?.name ?? "Unknown",
+    })),
+  };
 });
