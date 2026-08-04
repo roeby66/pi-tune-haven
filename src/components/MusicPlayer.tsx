@@ -1,6 +1,7 @@
 import { usePlayer } from "@/contexts/PlayerContext";
 import { formatDuration } from "@/lib/types";
 import {
+import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
   Heart,
   Pause,
   Play,
@@ -44,7 +45,7 @@ export function MusicPlayer() {
       <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-card/95 p-3 shadow-purple backdrop-blur">
         <div className="flex items-center gap-3">
           <img
-            src={current.cover}
+            src={current.cover || logoAsset.url}
             alt={current.title}
             className="h-12 w-12 flex-shrink-0 rounded-lg object-cover"
           />
