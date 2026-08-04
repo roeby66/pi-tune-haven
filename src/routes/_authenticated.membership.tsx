@@ -21,6 +21,7 @@ import {
   type MembershipPlan,
 } from "@/lib/payments.functions";
 import { createPiPayment } from "@/lib/pi-payments";
+import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 import { isPiBrowser } from "@/lib/pi-auth";
 import {
   payDiagStart,
