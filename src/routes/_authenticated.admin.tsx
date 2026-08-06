@@ -107,9 +107,9 @@ function AdminGate() {
   return <AdminPage />;
 }
 
-function AdminPage() {
-  const { user } = useAuth();
+function AdminPage({ user }: { user: AppUser }) {
   const [tab, setTab] = useState<TabId>("dashboard");
+
 
 
 
