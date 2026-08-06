@@ -28,14 +28,19 @@ import {
 } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  // Admin state lives in the client-side Pi/Supabase session, so never
+  // pre-render this subtree on the server.
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Admin Panel — MyPiMusic" },
       { name: "description", content: "Manage MyPiMusic music, artists, users and memberships." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  component: AdminPage,
+  component: AdminGate,
 });
+
 
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
