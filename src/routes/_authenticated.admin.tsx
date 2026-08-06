@@ -14,7 +14,7 @@ import {
   Upload,
   Users,
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type AppUser } from "@/contexts/AuthContext";
 import {
   uploadSong,
   deleteSong,
@@ -104,7 +104,7 @@ function AdminGate() {
     );
   }
 
-  return <AdminPage />;
+  return <AdminPage user={user} />;
 }
 
 function AdminPage({ user }: { user: AppUser }) {
