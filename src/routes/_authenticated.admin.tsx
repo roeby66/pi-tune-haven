@@ -14,7 +14,7 @@ import {
   Upload,
   Users,
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type AppUser } from "@/contexts/AuthContext";
 import {
   uploadSong,
   deleteSong,
@@ -28,14 +28,19 @@ import {
 } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  // Admin state lives in the client-side Pi/Supabase session, so never
+  // pre-render this subtree on the server.
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Admin Panel — MyPiMusic" },
       { name: "description", content: "Manage MyPiMusic music, artists, users and memberships." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
-  component: AdminPage,
+  component: AdminGate,
 });
+
 
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -62,13 +67,26 @@ function Panel({ children, title, icon: Icon }: { children: React.ReactNode; tit
   );
 }
 
-function AdminPage() {
-  const { isAdmin, user } = useAuth();
+/**
+ * Hard gate: the admin UI module below is only ever mounted once we know the
+ * signed-in user has the admin role AND a live Supabase session. Non-admins
+ * never render a single frame of the panel — no flash, no admin data fetches.
+ */
+function AdminGate() {
+  const { isAdmin, user, status, hasSupabaseSession } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<TabId>("dashboard");
 
-  if (!user) return null;
-  if (!isAdmin) {
+  // Still resolving the session — render nothing (the outer layout already
+  // shows the login screen when unauthenticated).
+  if (status === "loading") {
+    return (
+      <div className="flex justify-center py-20 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user || status !== "authenticated" || !hasSupabaseSession || !isAdmin) {
     return (
       <div className="mx-auto max-w-md rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center">
         <Shield className="mx-auto h-10 w-10 text-destructive" />
@@ -85,6 +103,16 @@ function AdminPage() {
       </div>
     );
   }
+
+  return <AdminPage user={user} />;
+}
+
+function AdminPage({ user }: { user: AppUser }) {
+  const [tab, setTab] = useState<TabId>("dashboard");
+
+
+
+
 
   return (
     <div className="space-y-5">
