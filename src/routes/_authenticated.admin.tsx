@@ -26,6 +26,11 @@ import {
   listMembershipsAdmin,
   getAdminStats,
 } from "@/lib/admin.functions";
+import {
+  ArtistApplicationsTab,
+  ApprovedArtistsTab,
+  SongVerificationTab,
+} from "@/components/admin/ArtistAdminTabs";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   // Admin state lives in the client-side Pi/Supabase session, so never
@@ -46,6 +51,9 @@ const TABS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "music", label: "Music", icon: Music },
   { id: "artists", label: "Artists", icon: Mic2 },
+  { id: "applications", label: "Artist Applications", icon: Mic2 },
+  { id: "approvedArtists", label: "Approved Artists", icon: Mic2 },
+  { id: "verification", label: "Song Verification", icon: Shield },
   { id: "users", label: "Users", icon: Users },
   { id: "memberships", label: "Memberships", icon: CreditCard },
   { id: "upload", label: "Upload", icon: Upload },
@@ -140,6 +148,9 @@ function AdminPage({ user }: { user: AppUser }) {
       {tab === "dashboard" && <DashboardTab />}
       {tab === "music" && <MusicTab />}
       {tab === "artists" && <ArtistsTab />}
+      {tab === "applications" && <ArtistApplicationsTab />}
+      {tab === "approvedArtists" && <ApprovedArtistsTab />}
+      {tab === "verification" && <SongVerificationTab />}
       {tab === "users" && <UsersTab currentUid={user.uid} />}
       {tab === "memberships" && <MembershipsTab />}
       {tab === "upload" && <UploadTab />}
