@@ -20,6 +20,7 @@ import { Route as AuthenticatedMembershipRouteImport } from './routes/_authentic
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated.home'
 import { Route as AuthenticatedFavoritesRouteImport } from './routes/_authenticated.favorites'
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated.discover'
+import { Route as AuthenticatedBecomeArtistRouteImport } from './routes/_authenticated.become-artist'
 import { Route as AuthenticatedArtistsRouteImport } from './routes/_authenticated.artists'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedMusicIdRouteImport } from './routes/_authenticated.music.$id'
@@ -78,6 +79,12 @@ const AuthenticatedDiscoverRoute = AuthenticatedDiscoverRouteImport.update({
   path: '/discover',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedBecomeArtistRoute =
+  AuthenticatedBecomeArtistRouteImport.update({
+    id: '/become-artist',
+    path: '/become-artist',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedArtistsRoute = AuthenticatedArtistsRouteImport.update({
   id: '/artists',
   path: '/artists',
@@ -101,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/artists': typeof AuthenticatedArtistsRoute
+  '/become-artist': typeof AuthenticatedBecomeArtistRoute
   '/discover': typeof AuthenticatedDiscoverRoute
   '/favorites': typeof AuthenticatedFavoritesRoute
   '/home': typeof AuthenticatedHomeRoute
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/artists': typeof AuthenticatedArtistsRoute
+  '/become-artist': typeof AuthenticatedBecomeArtistRoute
   '/discover': typeof AuthenticatedDiscoverRoute
   '/favorites': typeof AuthenticatedFavoritesRoute
   '/home': typeof AuthenticatedHomeRoute
@@ -133,6 +142,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/artists': typeof AuthenticatedArtistsRoute
+  '/_authenticated/become-artist': typeof AuthenticatedBecomeArtistRoute
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_authenticated/favorites': typeof AuthenticatedFavoritesRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
@@ -150,6 +160,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin'
     | '/artists'
+    | '/become-artist'
     | '/discover'
     | '/favorites'
     | '/home'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/admin'
     | '/artists'
+    | '/become-artist'
     | '/discover'
     | '/favorites'
     | '/home'
@@ -181,6 +193,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/_authenticated/admin'
     | '/_authenticated/artists'
+    | '/_authenticated/become-artist'
     | '/_authenticated/discover'
     | '/_authenticated/favorites'
     | '/_authenticated/home'
@@ -277,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDiscoverRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/become-artist': {
+      id: '/_authenticated/become-artist'
+      path: '/become-artist'
+      fullPath: '/become-artist'
+      preLoaderRoute: typeof AuthenticatedBecomeArtistRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/artists': {
       id: '/_authenticated/artists'
       path: '/artists'
@@ -304,6 +324,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedArtistsRoute: typeof AuthenticatedArtistsRoute
+  AuthenticatedBecomeArtistRoute: typeof AuthenticatedBecomeArtistRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedFavoritesRoute: typeof AuthenticatedFavoritesRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
@@ -316,6 +337,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedArtistsRoute: AuthenticatedArtistsRoute,
+  AuthenticatedBecomeArtistRoute: AuthenticatedBecomeArtistRoute,
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedFavoritesRoute: AuthenticatedFavoritesRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
@@ -339,13 +361,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
