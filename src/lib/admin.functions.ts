@@ -87,6 +87,10 @@ export const uploadSong = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (insertErr || !song) throw new Error(`SONG_INSERT_FAILED: ${insertErr?.message}`);
+    // Admin uploads are trusted and published immediately.
+    await supabaseAdmin
+      .from("song_verifications")
+      .upsert({ song_id: song.id, artist_id: artistId, status: "verified" }, { onConflict: "song_id" });
 
     return { id: song.id };
   });

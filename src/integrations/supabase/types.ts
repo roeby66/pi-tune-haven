@@ -14,6 +14,163 @@ export type Database = {
   }
   public: {
     Tables: {
+      artist_applications: {
+        Row: {
+          artist_name: string
+          avatar_url: string | null
+          bio: string | null
+          copyright_declaration_accepted: boolean
+          copyright_declaration_accepted_at: string | null
+          created_at: string
+          demo_url: string | null
+          description: string | null
+          full_name: string
+          genre: string | null
+          guidelines_accepted: boolean
+          id: string
+          location: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          social_links: Json
+          status: Database["public"]["Enums"]["artist_application_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          artist_name: string
+          avatar_url?: string | null
+          bio?: string | null
+          copyright_declaration_accepted?: boolean
+          copyright_declaration_accepted_at?: string | null
+          created_at?: string
+          demo_url?: string | null
+          description?: string | null
+          full_name: string
+          genre?: string | null
+          guidelines_accepted?: boolean
+          id?: string
+          location?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          social_links?: Json
+          status?: Database["public"]["Enums"]["artist_application_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          artist_name?: string
+          avatar_url?: string | null
+          bio?: string | null
+          copyright_declaration_accepted?: boolean
+          copyright_declaration_accepted_at?: string | null
+          created_at?: string
+          demo_url?: string | null
+          description?: string | null
+          full_name?: string
+          genre?: string | null
+          guidelines_accepted?: boolean
+          id?: string
+          location?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          social_links?: Json
+          status?: Database["public"]["Enums"]["artist_application_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_applications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "pi_users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "artist_applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "pi_users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
+      artist_profiles: {
+        Row: {
+          application_id: string | null
+          artist_id: string | null
+          artist_name: string
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          genre: string | null
+          id: string
+          location: string | null
+          pioneer_artist: boolean
+          social_links: Json
+          status: Database["public"]["Enums"]["artist_profile_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_id?: string | null
+          artist_id?: string | null
+          artist_name: string
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          genre?: string | null
+          id?: string
+          location?: string | null
+          pioneer_artist?: boolean
+          social_links?: Json
+          status?: Database["public"]["Enums"]["artist_profile_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_id?: string | null
+          artist_id?: string | null
+          artist_name?: string
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          genre?: string | null
+          id?: string
+          location?: string | null
+          pioneer_artist?: boolean
+          social_links?: Json
+          status?: Database["public"]["Enums"]["artist_profile_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_profiles_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "artist_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artist_profiles_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artist_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "pi_users"
+            referencedColumns: ["uid"]
+          },
+        ]
+      }
       artists: {
         Row: {
           bio: string | null
@@ -316,6 +473,64 @@ export type Database = {
           },
         ]
       }
+      song_verifications: {
+        Row: {
+          artist_id: string | null
+          created_at: string
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          song_id: string
+          status: Database["public"]["Enums"]["song_verification_status"]
+          updated_at: string
+          verification_notes: string | null
+        }
+        Insert: {
+          artist_id?: string | null
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          song_id: string
+          status?: Database["public"]["Enums"]["song_verification_status"]
+          updated_at?: string
+          verification_notes?: string | null
+        }
+        Update: {
+          artist_id?: string | null
+          created_at?: string
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          song_id?: string
+          status?: Database["public"]["Enums"]["song_verification_status"]
+          updated_at?: string
+          verification_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "song_verifications_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "song_verifications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "pi_users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "song_verifications_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: true
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       songs: {
         Row: {
           album: string | null
@@ -458,6 +673,55 @@ export type Database = {
           },
         ]
       }
+      verification_download_logs: {
+        Row: {
+          action: string
+          admin_user_id: string
+          artist_id: string | null
+          downloaded_at: string
+          id: string
+          song_id: string | null
+        }
+        Insert: {
+          action?: string
+          admin_user_id: string
+          artist_id?: string | null
+          downloaded_at?: string
+          id?: string
+          song_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          artist_id?: string | null
+          downloaded_at?: string
+          id?: string
+          song_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_download_logs_admin_user_id_fkey"
+            columns: ["admin_user_id"]
+            isOneToOne: false
+            referencedRelation: "pi_users"
+            referencedColumns: ["uid"]
+          },
+          {
+            foreignKeyName: "verification_download_logs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_download_logs_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -472,6 +736,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      artist_application_status: "pending" | "approved" | "rejected"
+      artist_profile_status: "active" | "suspended"
       membership_status:
         | "pending"
         | "active"
@@ -485,6 +751,11 @@ export type Database = {
         | "failed"
         | "expired"
         | "refunded"
+      song_verification_status:
+        | "pending_verification"
+        | "verified"
+        | "needs_review"
+        | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -613,6 +884,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      artist_application_status: ["pending", "approved", "rejected"],
+      artist_profile_status: ["active", "suspended"],
       membership_status: [
         "pending",
         "active",
@@ -627,6 +900,12 @@ export const Constants = {
         "failed",
         "expired",
         "refunded",
+      ],
+      song_verification_status: [
+        "pending_verification",
+        "verified",
+        "needs_review",
+        "rejected",
       ],
     },
   },

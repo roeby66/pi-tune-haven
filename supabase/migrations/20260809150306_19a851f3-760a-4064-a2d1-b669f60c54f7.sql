@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.create_song_verification() FROM PUBLIC, anon, authenticated;

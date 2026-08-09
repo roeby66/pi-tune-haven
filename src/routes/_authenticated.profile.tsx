@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { BadgeCheck, LogOut, Shield } from "lucide-react";
+import { BadgeCheck, LogOut, Mic2, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { SongRow } from "@/components/SongCard";
 import { listFavoriteSongs, listRecentPlays } from "@/lib/music.functions";
@@ -48,6 +48,21 @@ function ProfilePage() {
             </span>
           )}
         </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <Link
+          to="/become-artist"
+          className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary"
+        >
+          <Mic2 className="h-4 w-4" /> 🎤 Menjadi Artis
+        </Link>
+        <Link
+          to="/artist-dashboard"
+          className="flex items-center gap-2 rounded-xl border border-white/10 bg-card/60 px-4 py-3 text-sm font-semibold"
+        >
+          <Mic2 className="h-4 w-4 text-primary" /> Artist Dashboard
+        </Link>
       </div>
 
       <section className="mt-6">
