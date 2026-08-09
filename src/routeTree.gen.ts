@@ -22,6 +22,7 @@ import { Route as AuthenticatedFavoritesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated.discover'
 import { Route as AuthenticatedBecomeArtistRouteImport } from './routes/_authenticated.become-artist'
 import { Route as AuthenticatedArtistsRouteImport } from './routes/_authenticated.artists'
+import { Route as AuthenticatedArtistDashboardRouteImport } from './routes/_authenticated.artist-dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedMusicIdRouteImport } from './routes/_authenticated.music.$id'
 
@@ -90,6 +91,12 @@ const AuthenticatedArtistsRoute = AuthenticatedArtistsRouteImport.update({
   path: '/artists',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedArtistDashboardRoute =
+  AuthenticatedArtistDashboardRouteImport.update({
+    id: '/artist-dashboard',
+    path: '/artist-dashboard',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/artist-dashboard': typeof AuthenticatedArtistDashboardRoute
   '/artists': typeof AuthenticatedArtistsRoute
   '/become-artist': typeof AuthenticatedBecomeArtistRoute
   '/discover': typeof AuthenticatedDiscoverRoute
@@ -123,6 +131,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/artist-dashboard': typeof AuthenticatedArtistDashboardRoute
   '/artists': typeof AuthenticatedArtistsRoute
   '/become-artist': typeof AuthenticatedBecomeArtistRoute
   '/discover': typeof AuthenticatedDiscoverRoute
@@ -141,6 +150,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/artist-dashboard': typeof AuthenticatedArtistDashboardRoute
   '/_authenticated/artists': typeof AuthenticatedArtistsRoute
   '/_authenticated/become-artist': typeof AuthenticatedBecomeArtistRoute
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/admin'
+    | '/artist-dashboard'
     | '/artists'
     | '/become-artist'
     | '/discover'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/admin'
+    | '/artist-dashboard'
     | '/artists'
     | '/become-artist'
     | '/discover'
@@ -192,6 +204,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/terms'
     | '/_authenticated/admin'
+    | '/_authenticated/artist-dashboard'
     | '/_authenticated/artists'
     | '/_authenticated/become-artist'
     | '/_authenticated/discover'
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArtistsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/artist-dashboard': {
+      id: '/_authenticated/artist-dashboard'
+      path: '/artist-dashboard'
+      fullPath: '/artist-dashboard'
+      preLoaderRoute: typeof AuthenticatedArtistDashboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -323,6 +343,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedArtistDashboardRoute: typeof AuthenticatedArtistDashboardRoute
   AuthenticatedArtistsRoute: typeof AuthenticatedArtistsRoute
   AuthenticatedBecomeArtistRoute: typeof AuthenticatedBecomeArtistRoute
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
@@ -336,6 +357,7 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedArtistDashboardRoute: AuthenticatedArtistDashboardRoute,
   AuthenticatedArtistsRoute: AuthenticatedArtistsRoute,
   AuthenticatedBecomeArtistRoute: AuthenticatedBecomeArtistRoute,
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
