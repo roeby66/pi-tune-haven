@@ -55,6 +55,20 @@ async function toSongs(rows: DbSong[]): Promise<Song[]> {
   return Promise.all(rows.map(toSong));
 }
 
+/** Songs rejected or still awaiting admin verification are never published. */
+async function filterPublished(rows: DbSong[]): Promise<DbSong[]> {
+  if (rows.length === 0) return rows;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("song_verifications")
+    .select("song_id,status")
+    .in("song_id", rows.map((r) => r.id));
+  const blocked = new Set(
+    (data ?? []).filter((v) => v.status !== "verified").map((v) => v.song_id),
+  );
+  return rows.filter((r) => !blocked.has(r.id));
+}
+
 export const listSongs = createServerFn({ method: "GET" })
   .inputValidator(
     (data?: { sort?: "trending" | "new" | "featured"; limit?: number; search?: string }) =>
@@ -82,7 +96,7 @@ export const listSongs = createServerFn({ method: "GET" })
     q = q.limit(Math.min(Math.max(data.limit ?? 20, 1), 100));
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return toSongs((rows ?? []) as unknown as DbSong[]);
+    return toSongs(await filterPublished((rows ?? []) as unknown as DbSong[]));
   });
 
 export const getSong = createServerFn({ method: "GET" })
@@ -97,7 +111,9 @@ export const getSong = createServerFn({ method: "GET" })
       .eq("id", data.id)
       .maybeSingle();
     if (!row) return null;
-    return toSong(row as unknown as DbSong);
+    const allowed = await filterPublished([row as unknown as DbSong]);
+    if (allowed.length === 0) return null;
+    return toSong(allowed[0]!);
   });
 
 export const listArtists = createServerFn({ method: "GET" }).handler(
