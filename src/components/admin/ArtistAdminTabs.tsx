@@ -288,7 +288,6 @@ export function SongVerificationTab() {
         <SongVerificationList status={status} />
       </section>
 
-      <section={undefined as never} />
       <section className={box}>
         <div className="mb-4 flex items-center gap-2">
           <Download className="h-4 w-4 text-primary" />
