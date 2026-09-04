@@ -33,7 +33,7 @@ export const listArtistApplications = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     let q = supabaseAdmin
       .from("artist_applications")
-      .select("*, pi_users(username)")
+      .select("*, applicant:pi_users!artist_applications_user_id_fkey(username)")
       .order("created_at", { ascending: false })
       .limit(200);
     if (data.status && data.status !== "all") q = q.eq("status", data.status);
@@ -69,7 +69,9 @@ export const listArtistApplications = createServerFn({ method: "GET" })
         return {
           id: r.id,
           user_id: r.user_id,
-          username: (r as unknown as { pi_users: { username: string } | null }).pi_users?.username ?? r.user_id,
+          username:
+            (r as unknown as { applicant: { username: string } | null }).applicant?.username ??
+            r.user_id,
           artist_name: r.artist_name,
           full_name: r.full_name,
           genre: r.genre,

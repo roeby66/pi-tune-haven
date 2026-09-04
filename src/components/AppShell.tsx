@@ -9,6 +9,7 @@ const NAV = [
   { to: "/discover", label: "Discover", icon: Compass },
   { to: "/artists", label: "Artists", icon: Mic2 },
   { to: "/favorites", label: "Favorites", icon: Heart },
+  { to: "/become-artist", label: "Artist", icon: Mic2 },
   { to: "/profile", label: "Profile", icon: User },
 ] as const;
 
@@ -88,7 +89,7 @@ export function AppShell() {
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/95 backdrop-blur md:hidden">
         <div
-          className={`mx-auto grid max-w-5xl ${isAdmin ? "grid-cols-6" : "grid-cols-5"}`}
+          className={`mx-auto grid max-w-5xl ${isAdmin ? "grid-cols-7" : "grid-cols-6"}`}
         >
           {navItems.map(({ to, label, icon: Icon }) => {
             const active = pathname === to || (to !== "/home" && pathname.startsWith(to));
