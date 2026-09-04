@@ -79,9 +79,9 @@ function BecomeArtistPage() {
         <div className="flex items-center gap-3">
           <Mic2 className="h-6 w-6" />
           <div>
-            <h1 className="text-xl font-extrabold">🎤 Menjadi Artis</h1>
+            <h1 className="text-xl font-extrabold">🎤 Become an Artist</h1>
             <p className="text-xs opacity-85">
-              Premium Member → Permohonan Artis → Review Admin → Artis Disetujui
+              Share your music with the MyPiMusic community.
             </p>
           </div>
         </div>
