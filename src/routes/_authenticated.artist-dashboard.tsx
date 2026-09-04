@@ -77,7 +77,7 @@ function ArtistDashboardGate() {
           to="/become-artist"
           className="mt-4 inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
         >
-          🎤 Menjadi Artis
+          🎤 Become an Artist
         </Link>
       </div>
     );

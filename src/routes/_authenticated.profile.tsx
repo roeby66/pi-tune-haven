@@ -55,7 +55,7 @@ function ProfilePage() {
           to="/become-artist"
           className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary"
         >
-          <Mic2 className="h-4 w-4" /> 🎤 Menjadi Artis
+          <Mic2 className="h-4 w-4" /> 🎤 Become an Artist
         </Link>
         <Link
           to="/artist-dashboard"
