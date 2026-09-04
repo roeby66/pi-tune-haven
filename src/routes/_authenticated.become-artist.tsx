@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/become-artist")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Menjadi Artis — MyPiMusic" },
+      { title: "Become an Artist — MyPiMusic" },
       {
         name: "description",
         content: "Premium members can apply to become a verified MyPiMusic artist.",
@@ -47,12 +47,12 @@ function BecomeArtistPage() {
   const submit = useMutation({
     mutationFn: (fd: FormData) => submitArtistApplication({ data: fd }),
     onSuccess: () => {
-      toast.success("Permohonan terkirim! Admin akan meninjau permohonan Anda.");
+      toast.success("Application submitted! An admin will review it shortly.");
       formRef.current?.reset();
       setReapply(false);
       qc.invalidateQueries({ queryKey: ["artist", "status"] });
     },
-    onError: (e: Error) => toast.error(e.message || "Gagal mengirim permohonan"),
+    onError: (e: Error) => toast.error(e.message || "Failed to submit application"),
   });
 
   if (status.isLoading) {
@@ -66,7 +66,7 @@ function BecomeArtistPage() {
   if (status.isError) {
     return (
       <Section>
-        <p className="text-sm text-destructive">Gagal memuat status: {(status.error as Error).message}</p>
+        <p className="text-sm text-destructive">Failed to load status: {(status.error as Error).message}</p>
       </Section>
     );
   }
@@ -93,9 +93,9 @@ function BecomeArtistPage() {
           <div className="flex items-start gap-3">
             <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
             <div className="flex-1">
-              <p className="font-bold">Selamat! Permohonan Anda sebagai artis telah disetujui.</p>
+              <p className="font-bold">Congratulations! Your artist application has been approved.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Anda tampil sebagai <strong>{data.profile.artist_name}</strong>
+                You appear as <strong>{data.profile.artist_name}</strong>
                 {data.profile.pioneer_artist && (
                   <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
                     🎵 Pioneer Artist
@@ -104,14 +104,14 @@ function BecomeArtistPage() {
               </p>
               {data.profile.status === "suspended" && (
                 <p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-                  Akun artis Anda sedang ditangguhkan. Hubungi Admin.
+                  Your artist account is suspended. Please contact an admin.
                 </p>
               )}
               <Link
                 to="/artist-dashboard"
                 className="mt-3 inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
               >
-                Buka Artist Dashboard
+                Open Artist Dashboard
               </Link>
             </div>
           </div>
@@ -124,16 +124,16 @@ function BecomeArtistPage() {
           <div className="flex items-start gap-3">
             <Crown className="mt-0.5 h-5 w-5 text-primary" />
             <div>
-              <p className="font-bold">Fitur menjadi artis tersedia untuk member Premium.</p>
+              <p className="font-bold">Becoming an artist is available to Premium members.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Upgrade ke Premium untuk dapat mengirimkan permohonan artis. Premium tidak otomatis
-                menjadikan Anda artis — permohonan tetap ditinjau Admin.
+                Upgrade to Premium to submit an artist application. Premium does not make you an
+                artist automatically — every application is reviewed by an admin.
               </p>
               <Link
                 to="/membership"
                 className="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
               >
-                <Crown className="h-4 w-4" /> Lihat Membership
+                <Crown className="h-4 w-4" /> View Membership
               </Link>
             </div>
           </div>
@@ -146,9 +146,9 @@ function BecomeArtistPage() {
           <div className="flex items-start gap-3">
             <Clock className="mt-0.5 h-5 w-5 text-primary" />
             <div>
-              <p className="font-bold">Permohonan Anda sedang diperiksa oleh Admin.</p>
+              <p className="font-bold">Your artist application is under review.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Dikirim {new Date(data.application.created_at).toLocaleString()} sebagai{" "}
+                Submitted {new Date(data.application.created_at).toLocaleString()} as{" "}
                 <strong>{data.application.artist_name}</strong>.
               </p>
             </div>
@@ -162,12 +162,12 @@ function BecomeArtistPage() {
           <div className="flex items-start gap-3">
             <XCircle className="mt-0.5 h-5 w-5 text-destructive" />
             <div>
-              <p className="font-bold">Permohonan Anda ditolak.</p>
+              <p className="font-bold">Your artist application was rejected.</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Alasan: {data.application.rejection_reason || "—"}
+                Reason: {data.application.rejection_reason || "—"}
               </p>
               <p className="text-xs text-muted-foreground">
-                Tanggal:{" "}
+                Date:{" "}
                 {new Date(data.application.reviewed_at ?? data.application.created_at).toLocaleString()}
               </p>
               {data.isPremium && (
@@ -175,7 +175,7 @@ function BecomeArtistPage() {
                   onClick={() => setReapply(true)}
                   className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
                 >
-                  Ajukan Lagi
+                  Apply Again
                 </button>
               )}
             </div>
@@ -188,7 +188,7 @@ function BecomeArtistPage() {
         data.isPremium &&
         (!data.application || (data.application.status === "rejected" && reapply)) && (
           <Section>
-            <h2 className="text-base font-bold">Formulir Permohonan Artis</h2>
+            <h2 className="text-base font-bold">Artist Application Form</h2>
             <form
               ref={formRef}
               className="mt-4 grid gap-4 sm:grid-cols-2"
@@ -198,38 +198,38 @@ function BecomeArtistPage() {
                 fd.set("guidelinesAccepted", fd.get("guidelinesAccepted") ? "true" : "false");
                 fd.set("copyrightAccepted", fd.get("copyrightAccepted") ? "true" : "false");
                 if (fd.get("copyrightAccepted") !== "true") {
-                  toast.error("Anda harus menyetujui pernyataan keaslian karya.");
+                  toast.error("You must accept the originality declaration.");
                   return;
                 }
                 if (fd.get("guidelinesAccepted") !== "true") {
-                  toast.error("Anda harus menyetujui Panduan Artis.");
+                  toast.error("You must accept the Artist Guidelines.");
                   return;
                 }
                 submit.mutate(fd);
               }}
             >
               <label className="text-sm">
-                Nama Artis *
+                Artist Name *
                 <input name="artistName" required maxLength={120} className={`mt-1 ${inputCls}`} />
               </label>
               <label className="text-sm">
-                Nama Lengkap *
+                Full Name *
                 <input name="fullName" required maxLength={120} className={`mt-1 ${inputCls}`} />
               </label>
               <label className="text-sm">
-                Genre Musik *
+                Music Genre *
                 <input name="genre" required maxLength={60} className={`mt-1 ${inputCls}`} />
               </label>
               <label className="text-sm">
-                Kota / Negara *
+                City / Country *
                 <input name="location" required maxLength={120} className={`mt-1 ${inputCls}`} />
               </label>
               <label className="text-sm sm:col-span-2">
-                Bio Artis *
+                Artist Bio *
                 <textarea name="bio" required rows={4} maxLength={2000} className={`mt-1 ${inputCls}`} />
               </label>
               <label className="text-sm sm:col-span-2">
-                Deskripsi singkat
+                Short description
                 <input name="description" maxLength={500} className={`mt-1 ${inputCls}`} />
               </label>
               <label className="text-sm">
@@ -245,15 +245,15 @@ function BecomeArtistPage() {
                 <input name="tiktok" className={`mt-1 ${inputCls}`} placeholder="https://tiktok.com/@..." />
               </label>
               <label className="text-sm">
-                Spotify / platform musik lain
+                Spotify / other music platform
                 <input name="musicPlatform" className={`mt-1 ${inputCls}`} placeholder="https://open.spotify.com/..." />
               </label>
               <label className="text-sm">
-                Foto / Avatar Artis (maks 5MB)
+                Artist Photo / Avatar (max 5MB)
                 <input name="avatar" type="file" accept="image/*" className={`mt-1 ${inputCls}`} />
               </label>
               <label className="text-sm">
-                Lagu / Demo Orisinal * (maks 30MB)
+                Original Song / Demo * (max 30MB)
                 <input name="demo" type="file" accept="audio/*" required className={`mt-1 ${inputCls}`} />
               </label>
 
