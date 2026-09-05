@@ -14,6 +14,151 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_clicks: {
+        Row: {
+          ad_id: string
+          created_at: string
+          id: string
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ad_id: string
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ad_id?: string
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_clicks_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ad_impressions: {
+        Row: {
+          ad_id: string
+          created_at: string
+          event_type: string
+          id: string
+          played_seconds: number | null
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ad_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          played_seconds?: number | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ad_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          played_seconds?: number | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_impressions_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ads: {
+        Row: {
+          ad_type: string
+          click_url: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_seconds: number | null
+          end_at: string | null
+          frequency_type: string
+          frequency_value: number | null
+          id: string
+          max_impressions: number | null
+          priority: number
+          sort_order: number
+          start_at: string | null
+          status: string
+          target_tier: string
+          thumbnail_path: string | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          video_path: string | null
+          video_url: string
+        }
+        Insert: {
+          ad_type?: string
+          click_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          end_at?: string | null
+          frequency_type?: string
+          frequency_value?: number | null
+          id?: string
+          max_impressions?: number | null
+          priority?: number
+          sort_order?: number
+          start_at?: string | null
+          status?: string
+          target_tier?: string
+          thumbnail_path?: string | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          video_path?: string | null
+          video_url: string
+        }
+        Update: {
+          ad_type?: string
+          click_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          end_at?: string | null
+          frequency_type?: string
+          frequency_value?: number | null
+          id?: string
+          max_impressions?: number | null
+          priority?: number
+          sort_order?: number
+          start_at?: string | null
+          status?: string
+          target_tier?: string
+          thumbnail_path?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          video_path?: string | null
+          video_url?: string
+        }
+        Relationships: []
+      }
       artist_applications: {
         Row: {
           artist_name: string
