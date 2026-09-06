@@ -10,7 +10,10 @@ import {
 } from "react";
 import type { Song } from "@/lib/types";
 import { toggleFavorite as toggleFavoriteFn, recordPlay, listFavorites } from "@/lib/music.functions";
+import { getNextAd, type PlayerAd } from "@/lib/ads.functions";
+import { getAdSessionId } from "@/lib/ad-session";
 import { useAuth } from "@/contexts/AuthContext";
+
 
 type RepeatMode = "off" | "all" | "one";
 
@@ -37,6 +40,9 @@ interface PlayerContextValue {
   cycleRepeat: () => void;
   toggleFavorite: (id: string) => Promise<void>;
   isFavorite: (id: string) => boolean;
+  currentAd: PlayerAd | null;
+  finishAd: () => void;
+
 }
 
 const PlayerContext = createContext<PlayerContextValue | undefined>(undefined);
@@ -54,6 +60,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [repeat, setRepeat] = useState<RepeatMode>("off");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const recordedRef = useRef<Set<string>>(new Set());
+  const [currentAd, setCurrentAd] = useState<PlayerAd | null>(null);
+  const pendingAdvanceRef = useRef(false);
+
 
   const current = index === null ? null : (queue[index] ?? null);
 
@@ -124,14 +133,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 
-  const handleEnded = useCallback(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    if (repeat === "one") {
-      el.currentTime = 0;
-      el.play().catch(() => {});
-      return;
-    }
+  const advance = useCallback(() => {
     setIndex((i) => {
       if (i === null) return null;
       if (shuffle && queue.length > 1) {
@@ -148,6 +150,51 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, [repeat, shuffle, queue.length]);
+
+  const finishAd = useCallback(() => {
+    setCurrentAd(null);
+    if (pendingAdvanceRef.current) {
+      pendingAdvanceRef.current = false;
+      advance();
+    }
+  }, [advance]);
+
+  const handleEnded = useCallback(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (repeat === "one") {
+      el.currentTime = 0;
+      el.play().catch(() => {});
+      return;
+    }
+    // Ask the backend whether an ad slot applies. Any failure or timeout is
+    // non-blocking: music simply continues to the next song.
+    let settled = false;
+    const proceed = () => {
+      if (settled) return;
+      settled = true;
+      advance();
+    };
+    const timer = window.setTimeout(proceed, 4000);
+    getNextAd({ data: { sessionId: getAdSessionId() } })
+      .then((res) => {
+        if (settled) return;
+        if (res?.ad) {
+          window.clearTimeout(timer);
+          settled = true;
+          pendingAdvanceRef.current = true;
+          setCurrentAd(res.ad);
+          return;
+        }
+        window.clearTimeout(timer);
+        proceed();
+      })
+      .catch(() => {
+        window.clearTimeout(timer);
+        proceed();
+      });
+  }, [repeat, advance]);
+
 
   const playSong = useCallback((song: Song, newQueue?: Song[]) => {
     const q = newQueue && newQueue.length ? newQueue : [song];
@@ -275,6 +322,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       cycleRepeat,
       toggleFavorite,
       isFavorite,
+      currentAd,
+      finishAd,
+
     }),
     [
       current,
@@ -298,6 +348,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       cycleRepeat,
       toggleFavorite,
       isFavorite,
+      currentAd,
+      finishAd,
+
     ],
   );
 

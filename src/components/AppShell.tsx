@@ -1,6 +1,8 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { Compass, Crown, Heart, Home, Mic2, Shield, User } from "lucide-react";
 import { MusicPlayer } from "./MusicPlayer";
+import { AdOverlay } from "./AdOverlay";
+
 import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -86,6 +88,8 @@ export function AppShell() {
       </footer>
 
       <MusicPlayer />
+      <AdOverlay />
+
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/95 backdrop-blur md:hidden">
         <div
