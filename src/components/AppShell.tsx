@@ -1,6 +1,8 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { Compass, Crown, Heart, Home, Mic2, Shield, User } from "lucide-react";
 import { MusicPlayer } from "./MusicPlayer";
+import { AdOverlay } from "./AdOverlay";
+
 import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 import { useAuth } from "@/contexts/AuthContext";
 
