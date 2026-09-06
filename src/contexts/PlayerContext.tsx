@@ -60,6 +60,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [repeat, setRepeat] = useState<RepeatMode>("off");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const recordedRef = useRef<Set<string>>(new Set());
+  const [currentAd, setCurrentAd] = useState<PlayerAd | null>(null);
+  const pendingAdvanceRef = useRef(false);
+
 
   const current = index === null ? null : (queue[index] ?? null);
 
