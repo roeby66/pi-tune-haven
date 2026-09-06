@@ -322,6 +322,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       cycleRepeat,
       toggleFavorite,
       isFavorite,
+      currentAd,
+      finishAd,
+
     }),
     [
       current,
