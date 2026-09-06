@@ -124,14 +124,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 
-  const handleEnded = useCallback(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    if (repeat === "one") {
-      el.currentTime = 0;
-      el.play().catch(() => {});
-      return;
-    }
+  const advance = useCallback(() => {
     setIndex((i) => {
       if (i === null) return null;
       if (shuffle && queue.length > 1) {
@@ -148,6 +141,51 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, [repeat, shuffle, queue.length]);
+
+  const finishAd = useCallback(() => {
+    setCurrentAd(null);
+    if (pendingAdvanceRef.current) {
+      pendingAdvanceRef.current = false;
+      advance();
+    }
+  }, [advance]);
+
+  const handleEnded = useCallback(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (repeat === "one") {
+      el.currentTime = 0;
+      el.play().catch(() => {});
+      return;
+    }
+    // Ask the backend whether an ad slot applies. Any failure or timeout is
+    // non-blocking: music simply continues to the next song.
+    let settled = false;
+    const proceed = () => {
+      if (settled) return;
+      settled = true;
+      advance();
+    };
+    const timer = window.setTimeout(proceed, 4000);
+    getNextAd({ data: { sessionId: getAdSessionId() } })
+      .then((res) => {
+        if (settled) return;
+        if (res?.ad) {
+          window.clearTimeout(timer);
+          settled = true;
+          pendingAdvanceRef.current = true;
+          setCurrentAd(res.ad);
+          return;
+        }
+        window.clearTimeout(timer);
+        proceed();
+      })
+      .catch(() => {
+        window.clearTimeout(timer);
+        proceed();
+      });
+  }, [repeat, advance]);
+
 
   const playSong = useCallback((song: Song, newQueue?: Song[]) => {
     const q = newQueue && newQueue.length ? newQueue : [song];
