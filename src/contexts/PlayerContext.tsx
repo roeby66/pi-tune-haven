@@ -40,6 +40,9 @@ interface PlayerContextValue {
   cycleRepeat: () => void;
   toggleFavorite: (id: string) => Promise<void>;
   isFavorite: (id: string) => boolean;
+  currentAd: PlayerAd | null;
+  finishAd: () => void;
+
 }
 
 const PlayerContext = createContext<PlayerContextValue | undefined>(undefined);
