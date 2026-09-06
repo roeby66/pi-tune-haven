@@ -86,6 +86,8 @@ export function AppShell() {
       </footer>
 
       <MusicPlayer />
+      <AdOverlay />
+
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-background/95 backdrop-blur md:hidden">
         <div
