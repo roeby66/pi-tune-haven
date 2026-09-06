@@ -10,7 +10,10 @@ import {
 } from "react";
 import type { Song } from "@/lib/types";
 import { toggleFavorite as toggleFavoriteFn, recordPlay, listFavorites } from "@/lib/music.functions";
+import { getNextAd, type PlayerAd } from "@/lib/ads.functions";
+import { getAdSessionId } from "@/lib/ad-session";
 import { useAuth } from "@/contexts/AuthContext";
+
 
 type RepeatMode = "off" | "all" | "one";
 
