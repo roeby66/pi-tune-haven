@@ -91,22 +91,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
     const onLoaded = () => setDuration(el.duration || 0);
     const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
-    const onEnded = () => handleEnded();
+    const onPause = () => {
+      if (!el.ended) setPlaying(false);
+    };
+    const onEnded = () => handleEndedRef.current();
+    const onError = () => handleErrorRef.current();
     el.addEventListener("timeupdate", onTime);
     el.addEventListener("loadedmetadata", onLoaded);
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
     el.addEventListener("ended", onEnded);
+    el.addEventListener("error", onError);
     return () => {
       el.removeEventListener("timeupdate", onTime);
       el.removeEventListener("loadedmetadata", onLoaded);
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
       el.removeEventListener("ended", onEnded);
+      el.removeEventListener("error", onError);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // Sync volume.
   useEffect(() => {
@@ -123,7 +129,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setProgress(0);
     }
     if (isPlaying) {
-      el.play().catch(() => setPlaying(false));
+      const tryPlay = () => el.play().catch(() => {});
+      el.play().catch(() => {
+        // Autoplay can reject before the media is ready — retry once loaded.
+        el.addEventListener("canplay", tryPlay, { once: true });
+      });
     }
     // Record play once per song load.
     if (!recordedRef.current.has(current.id)) {
@@ -131,7 +141,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       recordPlay({ data: { songId: current.id } }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id]);
+  }, [current?.id, isPlaying]);
 
   const advance = useCallback(() => {
     setIndex((i) => {
@@ -139,14 +149,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (shuffle && queue.length > 1) {
         let n = Math.floor(Math.random() * queue.length);
         if (n === i) n = (n + 1) % queue.length;
+        setPlaying(true);
         return n;
       }
       const next = i + 1;
       if (next >= queue.length) {
-        if (repeat === "all") return 0;
+        if (repeat === "all") {
+          setPlaying(true);
+          return 0;
+        }
         setPlaying(false);
         return i;
       }
+      setPlaying(true);
       return next;
     });
   }, [repeat, shuffle, queue.length]);
@@ -194,6 +209,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         proceed();
       });
   }, [repeat, advance]);
+
+  // Playback errors must never strand the queue: skip to the next track.
+  const handleError = useCallback(() => {
+    advance();
+  }, [advance]);
+
+  const handleEndedRef = useRef(handleEnded);
+  const handleErrorRef = useRef(handleError);
+  useEffect(() => {
+    handleEndedRef.current = handleEnded;
+    handleErrorRef.current = handleError;
+  }, [handleEnded, handleError]);
+
 
 
   const playSong = useCallback((song: Song, newQueue?: Song[]) => {

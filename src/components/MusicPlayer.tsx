@@ -8,8 +8,6 @@ import {
   Repeat,
   Repeat1,
   Shuffle,
-  SkipBack,
-  SkipForward,
   Square,
   Volume2,
 } from "lucide-react";
@@ -20,8 +18,6 @@ export function MusicPlayer() {
     isPlaying,
     togglePlay,
     stop,
-    next,
-    previous,
     progress,
     duration,
     seek,
@@ -68,9 +64,6 @@ export function MusicPlayer() {
             >
               <Shuffle className="h-4 w-4" />
             </button>
-            <button onClick={previous} className="rounded-full p-2 text-foreground/80 hover:text-foreground" aria-label="Previous">
-              <SkipBack className="h-5 w-5" />
-            </button>
             <button
               onClick={togglePlay}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-gold"
@@ -78,9 +71,7 @@ export function MusicPlayer() {
             >
               {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
             </button>
-            <button onClick={next} className="rounded-full p-2 text-foreground/80 hover:text-foreground" aria-label="Next">
-              <SkipForward className="h-5 w-5" />
-            </button>
+
             <button
               onClick={stop}
               className="hidden rounded-full p-2 text-muted-foreground hover:text-foreground sm:block"
