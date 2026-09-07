@@ -59,6 +59,7 @@ const TABS = [
   { id: "memberships", label: "Memberships", icon: CreditCard },
   { id: "upload", label: "Upload", icon: Upload },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "ads", label: "Ads Manager", icon: Megaphone },
   { id: "settings", label: "Settings", icon: Settings },
 ] as const;
 
