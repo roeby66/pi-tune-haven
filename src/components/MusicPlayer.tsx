@@ -8,8 +8,6 @@ import {
   Repeat,
   Repeat1,
   Shuffle,
-  SkipBack,
-  SkipForward,
   Square,
   Volume2,
 } from "lucide-react";
@@ -20,8 +18,6 @@ export function MusicPlayer() {
     isPlaying,
     togglePlay,
     stop,
-    next,
-    previous,
     progress,
     duration,
     seek,
