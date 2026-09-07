@@ -6,6 +6,7 @@ import {
   CreditCard,
   LayoutDashboard,
   Loader2,
+  Megaphone,
   Mic2,
   Music,
   Settings,
