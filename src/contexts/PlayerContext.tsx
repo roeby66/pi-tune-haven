@@ -91,22 +91,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
     const onLoaded = () => setDuration(el.duration || 0);
     const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
-    const onEnded = () => handleEnded();
+    const onPause = () => {
+      if (!el.ended) setPlaying(false);
+    };
+    const onEnded = () => handleEndedRef.current();
+    const onError = () => handleErrorRef.current();
     el.addEventListener("timeupdate", onTime);
     el.addEventListener("loadedmetadata", onLoaded);
     el.addEventListener("play", onPlay);
     el.addEventListener("pause", onPause);
     el.addEventListener("ended", onEnded);
+    el.addEventListener("error", onError);
     return () => {
       el.removeEventListener("timeupdate", onTime);
       el.removeEventListener("loadedmetadata", onLoaded);
       el.removeEventListener("play", onPlay);
       el.removeEventListener("pause", onPause);
       el.removeEventListener("ended", onEnded);
+      el.removeEventListener("error", onError);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // Sync volume.
   useEffect(() => {
