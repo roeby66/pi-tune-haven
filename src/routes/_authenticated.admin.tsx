@@ -158,6 +158,7 @@ function AdminPage({ user }: { user: AppUser }) {
       {tab === "memberships" && <MembershipsTab />}
       {tab === "upload" && <UploadTab />}
       {tab === "analytics" && <AnalyticsTab />}
+      {tab === "ads" && <AdsManagerTab />}
       {tab === "settings" && <SettingsTab username={user.username} uid={user.uid} />}
     </div>
   );
