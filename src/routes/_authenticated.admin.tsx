@@ -32,6 +32,7 @@ import {
   ApprovedArtistsTab,
   SongVerificationTab,
 } from "@/components/admin/ArtistAdminTabs";
+import { AdsManagerTab } from "@/components/admin/AdsManagerTab";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   // Admin state lives in the client-side Pi/Supabase session, so never
