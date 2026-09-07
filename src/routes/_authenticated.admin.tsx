@@ -6,6 +6,7 @@ import {
   CreditCard,
   LayoutDashboard,
   Loader2,
+  Megaphone,
   Mic2,
   Music,
   Settings,
@@ -31,6 +32,7 @@ import {
   ApprovedArtistsTab,
   SongVerificationTab,
 } from "@/components/admin/ArtistAdminTabs";
+import { AdsManagerTab } from "@/components/admin/AdsManagerTab";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   // Admin state lives in the client-side Pi/Supabase session, so never
@@ -58,6 +60,7 @@ const TABS = [
   { id: "memberships", label: "Memberships", icon: CreditCard },
   { id: "upload", label: "Upload", icon: Upload },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "ads", label: "Ads Manager", icon: Megaphone },
   { id: "settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -155,6 +158,7 @@ function AdminPage({ user }: { user: AppUser }) {
       {tab === "memberships" && <MembershipsTab />}
       {tab === "upload" && <UploadTab />}
       {tab === "analytics" && <AnalyticsTab />}
+      {tab === "ads" && <AdsManagerTab />}
       {tab === "settings" && <SettingsTab username={user.username} uid={user.uid} />}
     </div>
   );
