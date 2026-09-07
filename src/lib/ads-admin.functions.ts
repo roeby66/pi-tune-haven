@@ -255,7 +255,8 @@ export const duplicateAd = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin.from("ads").select("*").eq("id", data.id).maybeSingle();
     if (!row) throw new Error("AD_NOT_FOUND");
-    const clone = { ...(row as Record<string, unknown>) };
+    type AdsInsert = import("@/integrations/supabase/types").Database["public"]["Tables"]["ads"]["Insert"];
+    const clone = { ...(row as Record<string, unknown>) } as AdsInsert;
     delete clone.id;
     delete clone.created_at;
     delete clone.updated_at;
