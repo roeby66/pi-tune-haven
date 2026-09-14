@@ -135,6 +135,38 @@ export const listAllSongsAdmin = createServerFn({ method: "GET" }).handler(async
   }));
 });
 
+export const getSongLyricsAdmin = createServerFn({ method: "GET" })
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/admin.server");
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("songs")
+      .select("synced_lyrics")
+      .eq("id", data.id)
+      .maybeSingle();
+    return { lyrics: (row as { synced_lyrics: string | null } | null)?.synced_lyrics ?? "" };
+  });
+
+export const setSongLyrics = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string; lyrics: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/admin.server");
+    await requireAdmin();
+    const { validateSyncedLyrics } = await import("@/lib/lyrics");
+    const raw = (data.lyrics ?? "").slice(0, 20000);
+    const check = validateSyncedLyrics(raw);
+    if (!check.ok) throw new Error(check.error ?? "INVALID_LYRICS");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("songs")
+      .update({ synced_lyrics: raw.trim() || null } as never)
+      .eq("id", data.id);
+    if (error) throw new Error(`LYRICS_UPDATE_FAILED: ${error.message}`);
+    return { ok: true, lineCount: check.lineCount };
+  });
+
 export const listArtistsAdmin = createServerFn({ method: "GET" }).handler(async () => {
   const { requireAdmin } = await import("@/lib/admin.server");
   await requireAdmin();
