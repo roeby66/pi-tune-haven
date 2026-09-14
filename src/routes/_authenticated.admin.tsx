@@ -302,23 +302,36 @@ function MusicTab() {
       ) : (
         <div className="divide-y divide-white/5">
           {songsQ.data!.map((s) => (
-            <div key={s.id} className="flex items-center gap-3 py-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{s.title}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {s.artist} · {s.plays.toLocaleString()} plays{s.genre ? ` · ${s.genre}` : ""}
-                </p>
+            <div key={s.id} className="py-2">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{s.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {s.artist} · {s.plays.toLocaleString()} plays{s.genre ? ` · ${s.genre}` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setLyricsFor((cur) => (cur === s.id ? null : s.id))}
+                  className={`shrink-0 rounded-lg border px-2 py-1.5 text-xs font-semibold ${
+                    lyricsFor === s.id
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "border-white/10 bg-card/70 text-muted-foreground"
+                  }`}
+                >
+                  Lyrics
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Delete "${s.title}"? This cannot be undone.`)) deleteMut.mutate(s.id);
+                  }}
+                  disabled={deleteMut.isPending}
+                  className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-destructive hover:bg-destructive/20"
+                  aria-label={`Delete ${s.title}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  if (confirm(`Delete "${s.title}"? This cannot be undone.`)) deleteMut.mutate(s.id);
-                }}
-                disabled={deleteMut.isPending}
-                className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-destructive hover:bg-destructive/20"
-                aria-label={`Delete ${s.title}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              {lyricsFor === s.id && <LyricsEditor songId={s.id} title={s.title} />}
             </div>
           ))}
         </div>
