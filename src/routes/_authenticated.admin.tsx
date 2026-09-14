@@ -26,6 +26,8 @@ import {
   setUserAdminRole,
   listMembershipsAdmin,
   getAdminStats,
+  getSongLyricsAdmin,
+  setSongLyrics,
 } from "@/lib/admin.functions";
 import {
   ArtistApplicationsTab,
