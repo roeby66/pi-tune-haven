@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
   CreditCard,
@@ -26,6 +26,8 @@ import {
   setUserAdminRole,
   listMembershipsAdmin,
   getAdminStats,
+  getSongLyricsAdmin,
+  setSongLyrics,
 } from "@/lib/admin.functions";
 import {
   ArtistApplicationsTab,
@@ -212,8 +214,78 @@ function DashboardTab() {
   );
 }
 
+function LyricsEditor({ songId, title }: { songId: string; title: string }) {
+  const qc = useQueryClient();
+  const [text, setText] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const q = useQuery({
+    queryKey: ["admin", "lyrics", songId],
+    queryFn: () => getSongLyricsAdmin({ data: { id: songId } }),
+  });
+  useEffect(() => {
+    if (q.data && !loaded) {
+      setText(q.data.lyrics);
+      setLoaded(true);
+    }
+  }, [q.data, loaded]);
+
+  const save = useMutation({
+    mutationFn: () => setSongLyrics({ data: { id: songId, lyrics: text } }),
+    onSuccess: () => {
+      setError(null);
+      setSaved(true);
+      qc.invalidateQueries({ queryKey: ["songs"] });
+      window.setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  return (
+    <div className="mt-2 rounded-xl border border-white/10 bg-card/50 p-3">
+      <p className="mb-2 text-xs text-muted-foreground">
+        Synchronized lyrics for “{title}”. One line per lyric, e.g. <code>[00:12.50] Aku pulang…</code>
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setError(null);
+        }}
+        rows={8}
+        spellCheck={false}
+        placeholder={"[00:12.50] First line\n[00:17.20] Second line"}
+        className="w-full rounded-lg border border-white/10 bg-background/60 p-2 font-mono text-xs"
+      />
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          onClick={() => save.mutate()}
+          disabled={save.isPending}
+          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground disabled:opacity-50"
+        >
+          {save.isPending ? "Saving…" : "Save lyrics"}
+        </button>
+        <button
+          onClick={() => {
+            setText("");
+            setError(null);
+          }}
+          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-muted-foreground"
+        >
+          Clear
+        </button>
+        {saved && <span className="text-xs text-primary">Saved</span>}
+      </div>
+    </div>
+  );
+}
+
 function MusicTab() {
   const qc = useQueryClient();
+  const [lyricsFor, setLyricsFor] = useState<string | null>(null);
   const songsQ = useQuery({ queryKey: ["admin", "songs"], queryFn: () => listAllSongsAdmin() });
   const deleteMut = useMutation({
     mutationFn: async (id: string) => deleteSong({ data: { id } }),
@@ -232,23 +304,36 @@ function MusicTab() {
       ) : (
         <div className="divide-y divide-white/5">
           {songsQ.data!.map((s) => (
-            <div key={s.id} className="flex items-center gap-3 py-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{s.title}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {s.artist} · {s.plays.toLocaleString()} plays{s.genre ? ` · ${s.genre}` : ""}
-                </p>
+            <div key={s.id} className="py-2">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{s.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {s.artist} · {s.plays.toLocaleString()} plays{s.genre ? ` · ${s.genre}` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setLyricsFor((cur) => (cur === s.id ? null : s.id))}
+                  className={`shrink-0 rounded-lg border px-2 py-1.5 text-xs font-semibold ${
+                    lyricsFor === s.id
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "border-white/10 bg-card/70 text-muted-foreground"
+                  }`}
+                >
+                  Lyrics
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm(`Delete "${s.title}"? This cannot be undone.`)) deleteMut.mutate(s.id);
+                  }}
+                  disabled={deleteMut.isPending}
+                  className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-destructive hover:bg-destructive/20"
+                  aria-label={`Delete ${s.title}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  if (confirm(`Delete "${s.title}"? This cannot be undone.`)) deleteMut.mutate(s.id);
-                }}
-                disabled={deleteMut.isPending}
-                className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-destructive hover:bg-destructive/20"
-                aria-label={`Delete ${s.title}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              {lyricsFor === s.id && <LyricsEditor songId={s.id} title={s.title} />}
             </div>
           ))}
         </div>

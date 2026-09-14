@@ -1,0 +1,1 @@
+ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS synced_lyrics text;

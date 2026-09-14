@@ -689,6 +689,7 @@ export type Database = {
           id: string
           plays_count: number
           released_at: string
+          synced_lyrics: string | null
           title: string
           uploaded_by: string | null
         }
@@ -704,6 +705,7 @@ export type Database = {
           id?: string
           plays_count?: number
           released_at?: string
+          synced_lyrics?: string | null
           title: string
           uploaded_by?: string | null
         }
@@ -719,6 +721,7 @@ export type Database = {
           id?: string
           plays_count?: number
           released_at?: string
+          synced_lyrics?: string | null
           title?: string
           uploaded_by?: string | null
         }

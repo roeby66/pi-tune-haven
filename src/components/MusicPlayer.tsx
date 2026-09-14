@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { formatDuration } from "@/lib/types";
+import { LyricsPanel } from "@/components/LyricsPanel";
 import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 import {
   Heart,
+  Mic2,
   Pause,
   Play,
   Repeat,
@@ -30,6 +33,7 @@ export function MusicPlayer() {
     toggleShuffle,
     cycleRepeat,
   } = usePlayer();
+  const [showLyrics, setShowLyrics] = useState(false);
 
   if (!current) return null;
 
@@ -37,6 +41,8 @@ export function MusicPlayer() {
   const total = Math.floor(duration || current.duration);
 
   return (
+    <>
+    {showLyrics && <LyricsPanel onClose={() => setShowLyrics(false)} />}
     <div className="fixed inset-x-0 bottom-16 z-40 px-3 md:bottom-0 md:px-4">
       <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-card/95 p-3 shadow-purple backdrop-blur">
         <div className="flex items-center gap-3">
@@ -49,6 +55,13 @@ export function MusicPlayer() {
             <p className="truncate text-sm font-semibold">{current.title}</p>
             <p className="truncate text-xs text-muted-foreground">{current.artist}</p>
           </div>
+          <button
+            onClick={() => setShowLyrics(true)}
+            className="rounded-full p-2 text-muted-foreground transition-colors hover:text-primary"
+            aria-label="Lyrics"
+          >
+            <Mic2 className="h-4 w-4" />
+          </button>
           <button
             onClick={() => void toggleFavorite(current.id)}
             className="rounded-full p-2 text-muted-foreground transition-colors hover:text-primary"
@@ -117,5 +130,6 @@ export function MusicPlayer() {
         </div>
       </div>
     </div>
+    </>
   );
 }
