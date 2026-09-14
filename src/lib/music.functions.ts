@@ -16,6 +16,7 @@ type DbSong = {
   audio_path: string;
   plays_count: number;
   released_at: string;
+  synced_lyrics?: string | null;
   artists: { id: string; name: string } | null;
 };
 
@@ -48,6 +49,7 @@ async function toSong(row: DbSong): Promise<Song> {
     audio,
     plays: Number(row.plays_count),
     releasedAt: row.released_at,
+    syncedLyrics: row.synced_lyrics ?? null,
   };
 }
 
