@@ -56,6 +56,13 @@ export function MusicPlayer() {
             <p className="truncate text-xs text-muted-foreground">{current.artist}</p>
           </div>
           <button
+            onClick={() => setShowLyrics(true)}
+            className="rounded-full p-2 text-muted-foreground transition-colors hover:text-primary"
+            aria-label="Lyrics"
+          >
+            <Mic2 className="h-4 w-4" />
+          </button>
+          <button
             onClick={() => void toggleFavorite(current.id)}
             className="rounded-full p-2 text-muted-foreground transition-colors hover:text-primary"
             aria-label="Favorite"
@@ -123,5 +130,6 @@ export function MusicPlayer() {
         </div>
       </div>
     </div>
+    </>
   );
 }
