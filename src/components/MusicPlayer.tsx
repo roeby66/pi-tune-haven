@@ -33,6 +33,7 @@ export function MusicPlayer() {
     toggleShuffle,
     cycleRepeat,
   } = usePlayer();
+  const [showLyrics, setShowLyrics] = useState(false);
 
   if (!current) return null;
 
@@ -40,6 +41,8 @@ export function MusicPlayer() {
   const total = Math.floor(duration || current.duration);
 
   return (
+    <>
+    {showLyrics && <LyricsPanel onClose={() => setShowLyrics(false)} />}
     <div className="fixed inset-x-0 bottom-16 z-40 px-3 md:bottom-0 md:px-4">
       <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-card/95 p-3 shadow-purple backdrop-blur">
         <div className="flex items-center gap-3">
