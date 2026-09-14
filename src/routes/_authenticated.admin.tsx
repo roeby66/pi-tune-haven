@@ -212,8 +212,78 @@ function DashboardTab() {
   );
 }
 
+function LyricsEditor({ songId, title }: { songId: string; title: string }) {
+  const qc = useQueryClient();
+  const [text, setText] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const q = useQuery({
+    queryKey: ["admin", "lyrics", songId],
+    queryFn: () => getSongLyricsAdmin({ data: { id: songId } }),
+  });
+  useEffect(() => {
+    if (q.data && !loaded) {
+      setText(q.data.lyrics);
+      setLoaded(true);
+    }
+  }, [q.data, loaded]);
+
+  const save = useMutation({
+    mutationFn: () => setSongLyrics({ data: { id: songId, lyrics: text } }),
+    onSuccess: () => {
+      setError(null);
+      setSaved(true);
+      qc.invalidateQueries({ queryKey: ["songs"] });
+      window.setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
+  return (
+    <div className="mt-2 rounded-xl border border-white/10 bg-card/50 p-3">
+      <p className="mb-2 text-xs text-muted-foreground">
+        Synchronized lyrics for “{title}”. One line per lyric, e.g. <code>[00:12.50] Aku pulang…</code>
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setError(null);
+        }}
+        rows={8}
+        spellCheck={false}
+        placeholder={"[00:12.50] First line\n[00:17.20] Second line"}
+        className="w-full rounded-lg border border-white/10 bg-background/60 p-2 font-mono text-xs"
+      />
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          onClick={() => save.mutate()}
+          disabled={save.isPending}
+          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground disabled:opacity-50"
+        >
+          {save.isPending ? "Saving…" : "Save lyrics"}
+        </button>
+        <button
+          onClick={() => {
+            setText("");
+            setError(null);
+          }}
+          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-muted-foreground"
+        >
+          Clear
+        </button>
+        {saved && <span className="text-xs text-primary">Saved</span>}
+      </div>
+    </div>
+  );
+}
+
 function MusicTab() {
   const qc = useQueryClient();
+  const [lyricsFor, setLyricsFor] = useState<string | null>(null);
   const songsQ = useQuery({ queryKey: ["admin", "songs"], queryFn: () => listAllSongsAdmin() });
   const deleteMut = useMutation({
     mutationFn: async (id: string) => deleteSong({ data: { id } }),
