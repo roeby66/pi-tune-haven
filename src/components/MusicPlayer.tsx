@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { formatDuration } from "@/lib/types";
+import { LyricsPanel } from "@/components/LyricsPanel";
 import logoAsset from "@/assets/mypimusic-logo.jpg.asset.json";
 import {
   Heart,
+  Mic2,
   Pause,
   Play,
   Repeat,
