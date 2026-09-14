@@ -12,6 +12,8 @@ export interface Song {
   audio: string; // signed URL
   plays: number;
   releasedAt: string;
+  /** LRC-style synchronized lyrics, or null when unavailable. */
+  syncedLyrics?: string | null;
 }
 
 export interface Artist {
