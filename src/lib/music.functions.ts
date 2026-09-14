@@ -79,7 +79,7 @@ export const listSongs = createServerFn({ method: "GET" })
     let q = supabaseAdmin
       .from("songs")
       .select(
-        "id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,artists(id,name)",
+        "id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,artists(id,name)",
       );
     if (data.search) {
       q = q.ilike("title", `%${data.search}%`);
@@ -106,7 +106,7 @@ export const getSong = createServerFn({ method: "GET" })
     const { data: row } = await supabaseAdmin
       .from("songs")
       .select(
-        "id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,artists(id,name)",
+        "id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,artists(id,name)",
       )
       .eq("id", data.id)
       .maybeSingle();
@@ -195,7 +195,7 @@ export const listRecentPlays = createServerFn({ method: "GET" })
     const { data: rows } = await supabaseAdmin
       .from("plays")
       .select(
-        "song_id, played_at, songs(id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,artists(id,name))",
+        "song_id, played_at, songs(id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,artists(id,name))",
       )
       .eq("user_id", s.uid)
       .order("played_at", { ascending: false })
@@ -215,7 +215,7 @@ export const listFavoriteSongs = createServerFn({ method: "GET" }).handler(
     const { data: rows } = await supabaseAdmin
       .from("favorites")
       .select(
-        "song_id, songs(id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,artists(id,name))",
+        "song_id, songs(id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,artists(id,name))",
       )
       .eq("user_id", s.uid)
       .order("created_at", { ascending: false });
