@@ -17,6 +17,7 @@ type DbSong = {
   plays_count: number;
   released_at: string;
   synced_lyrics?: string | null;
+  lyrics?: string | null;
   artists: { id: string; name: string } | null;
 };
 
@@ -50,6 +51,7 @@ async function toSong(row: DbSong): Promise<Song> {
     plays: Number(row.plays_count),
     releasedAt: row.released_at,
     syncedLyrics: row.synced_lyrics ?? null,
+    lyrics: row.lyrics ?? null,
   };
 }
 
@@ -81,7 +83,7 @@ export const listSongs = createServerFn({ method: "GET" })
     let q = supabaseAdmin
       .from("songs")
       .select(
-        "id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,artists(id,name)",
+        "id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,lyrics,artists(id,name)",
       );
     if (data.search) {
       q = q.ilike("title", `%${data.search}%`);
@@ -108,7 +110,7 @@ export const getSong = createServerFn({ method: "GET" })
     const { data: row } = await supabaseAdmin
       .from("songs")
       .select(
-        "id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,artists(id,name)",
+        "id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,lyrics,artists(id,name)",
       )
       .eq("id", data.id)
       .maybeSingle();
@@ -197,7 +199,7 @@ export const listRecentPlays = createServerFn({ method: "GET" })
     const { data: rows } = await supabaseAdmin
       .from("plays")
       .select(
-        "song_id, played_at, songs(id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,artists(id,name))",
+        "song_id, played_at, songs(id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,lyrics,artists(id,name))",
       )
       .eq("user_id", s.uid)
       .order("played_at", { ascending: false })
@@ -217,7 +219,7 @@ export const listFavoriteSongs = createServerFn({ method: "GET" }).handler(
     const { data: rows } = await supabaseAdmin
       .from("favorites")
       .select(
-        "song_id, songs(id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,artists(id,name))",
+        "song_id, songs(id,title,album,genre,duration_seconds,cover_url,audio_url,audio_path,plays_count,released_at,synced_lyrics,lyrics,artists(id,name))",
       )
       .eq("user_id", s.uid)
       .order("created_at", { ascending: false });
