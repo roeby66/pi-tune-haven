@@ -232,6 +232,15 @@ function LyricsEditor({ songId, title }: { songId: string; title: string }) {
     }
   }, [q.data, loaded]);
 
+  const suggest = useMutation({
+    mutationFn: () => suggestSongLyricTimestamps({ data: { id: songId, lyrics: text } }),
+    onSuccess: (r) => {
+      setText(r.lyrics);
+      setError(null);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   const save = useMutation({
     mutationFn: () => setSongLyrics({ data: { id: songId, lyrics: text } }),
     onSuccess: () => {
