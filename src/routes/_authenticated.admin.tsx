@@ -231,6 +231,7 @@ function LyricsEditor({ songId, title }: { songId: string; title: string }) {
   useEffect(() => {
     if (q.data && !loaded) {
       setText(q.data.lyrics);
+      setPlain(q.data.plainLyrics);
       setLoaded(true);
     }
   }, [q.data, loaded]);
@@ -255,8 +256,50 @@ function LyricsEditor({ songId, title }: { songId: string; title: string }) {
     onError: (e: Error) => setError(e.message),
   });
 
+  const savePlain = useMutation({
+    mutationFn: () => setSongPlainLyrics({ data: { id: songId, lyrics: plain } }),
+    onSuccess: () => {
+      setError(null);
+      setSaved(true);
+      qc.invalidateQueries({ queryKey: ["songs"] });
+      window.setTimeout(() => setSaved(false), 2000);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   return (
     <div className="mt-2 rounded-xl border border-white/10 bg-card/50 p-3">
+      <p className="mb-2 text-xs text-muted-foreground">
+        Plain lyrics for “{title}”. One line per lyric; line breaks are preserved. Optional.
+      </p>
+      <textarea
+        value={plain}
+        onChange={(e) => {
+          setPlain(e.target.value);
+          setError(null);
+        }}
+        rows={6}
+        placeholder={"First line of the song\nSecond line of the song"}
+        className="w-full rounded-lg border border-white/10 bg-background/60 p-2 text-xs"
+      />
+      <div className="mt-2 mb-4 flex items-center gap-2">
+        <button
+          onClick={() => savePlain.mutate()}
+          disabled={savePlain.isPending}
+          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground disabled:opacity-50"
+        >
+          {savePlain.isPending ? "Saving…" : "Save plain lyrics"}
+        </button>
+        <button
+          onClick={() => {
+            setPlain("");
+            setError(null);
+          }}
+          className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-muted-foreground"
+        >
+          Clear
+        </button>
+      </div>
       <p className="mb-2 text-xs text-muted-foreground">
         Synchronized lyrics for “{title}”. One line per lyric, e.g. <code>[00:12.50] Aku pulang…</code>
       </p>
