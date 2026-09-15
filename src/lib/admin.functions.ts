@@ -143,10 +143,26 @@ export const getSongLyricsAdmin = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row } = await supabaseAdmin
       .from("songs")
-      .select("synced_lyrics")
+      .select("synced_lyrics,lyrics")
       .eq("id", data.id)
       .maybeSingle();
-    return { lyrics: (row as { synced_lyrics: string | null } | null)?.synced_lyrics ?? "" };
+    const r = row as { synced_lyrics: string | null; lyrics: string | null } | null;
+    return { lyrics: r?.synced_lyrics ?? "", plainLyrics: r?.lyrics ?? "" };
+  });
+
+export const setSongPlainLyrics = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string; lyrics: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/admin.server");
+    await requireAdmin();
+    const raw = (data.lyrics ?? "").slice(0, 20000);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("songs")
+      .update({ lyrics: raw.trim() || null } as never)
+      .eq("id", data.id);
+    if (error) throw new Error(`LYRICS_UPDATE_FAILED: ${error.message}`);
+    return { ok: true };
   });
 
 export const setSongLyrics = createServerFn({ method: "POST" })
