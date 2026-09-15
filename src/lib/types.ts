@@ -14,6 +14,8 @@ export interface Song {
   releasedAt: string;
   /** LRC-style synchronized lyrics, or null when unavailable. */
   syncedLyrics?: string | null;
+  /** Plain-text lyrics (line breaks preserved), or null when unavailable. */
+  lyrics?: string | null;
 }
 
 export interface Artist {
