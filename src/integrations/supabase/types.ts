@@ -687,6 +687,7 @@ export type Database = {
           duration_seconds: number
           genre: string | null
           id: string
+          lyrics: string | null
           plays_count: number
           released_at: string
           synced_lyrics: string | null
@@ -703,6 +704,7 @@ export type Database = {
           duration_seconds?: number
           genre?: string | null
           id?: string
+          lyrics?: string | null
           plays_count?: number
           released_at?: string
           synced_lyrics?: string | null
@@ -719,6 +721,7 @@ export type Database = {
           duration_seconds?: number
           genre?: string | null
           id?: string
+          lyrics?: string | null
           plays_count?: number
           released_at?: string
           synced_lyrics?: string | null
