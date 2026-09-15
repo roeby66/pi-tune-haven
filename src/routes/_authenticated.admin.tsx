@@ -28,6 +28,7 @@ import {
   getAdminStats,
   getSongLyricsAdmin,
   setSongLyrics,
+  setSongPlainLyrics,
   suggestSongLyricTimestamps,
 } from "@/lib/admin.functions";
 import {
@@ -218,6 +219,7 @@ function DashboardTab() {
 function LyricsEditor({ songId, title }: { songId: string; title: string }) {
   const qc = useQueryClient();
   const [text, setText] = useState("");
+  const [plain, setPlain] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
