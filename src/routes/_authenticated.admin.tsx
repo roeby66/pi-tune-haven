@@ -28,6 +28,7 @@ import {
   getAdminStats,
   getSongLyricsAdmin,
   setSongLyrics,
+  suggestSongLyricTimestamps,
 } from "@/lib/admin.functions";
 import {
   ArtistApplicationsTab,
