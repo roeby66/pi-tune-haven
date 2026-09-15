@@ -287,6 +287,13 @@ function LyricsEditor({ songId, title }: { songId: string; title: string }) {
         >
           Clear
         </button>
+        <button
+          onClick={() => suggest.mutate()}
+          disabled={suggest.isPending || !text.trim()}
+          className="rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-semibold text-primary disabled:opacity-50"
+        >
+          {suggest.isPending ? "Generating…" : "Suggest timestamps (AI)"}
+        </button>
         {saved && <span className="text-xs text-primary">Saved</span>}
       </div>
     </div>
