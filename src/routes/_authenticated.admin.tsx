@@ -28,6 +28,7 @@ import {
   getAdminStats,
   getSongLyricsAdmin,
   setSongLyrics,
+  suggestSongLyricTimestamps,
 } from "@/lib/admin.functions";
 import {
   ArtistApplicationsTab,
@@ -232,6 +233,15 @@ function LyricsEditor({ songId, title }: { songId: string; title: string }) {
     }
   }, [q.data, loaded]);
 
+  const suggest = useMutation({
+    mutationFn: () => suggestSongLyricTimestamps({ data: { id: songId, lyrics: text } }),
+    onSuccess: (r) => {
+      setText(r.lyrics);
+      setError(null);
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   const save = useMutation({
     mutationFn: () => setSongLyrics({ data: { id: songId, lyrics: text } }),
     onSuccess: () => {
@@ -276,6 +286,13 @@ function LyricsEditor({ songId, title }: { songId: string; title: string }) {
           className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-muted-foreground"
         >
           Clear
+        </button>
+        <button
+          onClick={() => suggest.mutate()}
+          disabled={suggest.isPending || !text.trim()}
+          className="rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-semibold text-primary disabled:opacity-50"
+        >
+          {suggest.isPending ? "Generating…" : "Suggest timestamps (AI)"}
         </button>
         {saved && <span className="text-xs text-primary">Saved</span>}
       </div>

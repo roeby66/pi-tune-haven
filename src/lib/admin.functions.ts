@@ -167,6 +167,35 @@ export const setSongLyrics = createServerFn({ method: "POST" })
     return { ok: true, lineCount: check.lineCount };
   });
 
+export const suggestSongLyricTimestamps = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string; lyrics: string }) => data)
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/admin.server");
+    await requireAdmin();
+    const plain = (data.lyrics ?? "")
+      .split(/\r?\n/)
+      // strip any timestamps already present so the model re-times cleanly
+      .map((l) => l.replace(/^(\[\d{1,3}:[0-5]\d(?:[.:]\d{1,3})?\])+\s*/, "").trim())
+      .filter(Boolean)
+      .join("\n")
+      .slice(0, 8000);
+    if (!plain) throw new Error("NO_LYRICS_TO_TIME");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: song } = await supabaseAdmin
+      .from("songs")
+      .select("duration_seconds")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    const { suggestLrc } = await import("@/lib/lyrics-ai.server");
+    const lrc = await suggestLrc(plain, Number(song?.duration_seconds ?? 0));
+    const { validateSyncedLyrics } = await import("@/lib/lyrics");
+    const check = validateSyncedLyrics(lrc);
+    if (!check.ok || !lrc.trim()) throw new Error("AI_OUTPUT_INVALID");
+    return { lyrics: lrc, lineCount: check.lineCount };
+  });
+
 export const listArtistsAdmin = createServerFn({ method: "GET" }).handler(async () => {
   const { requireAdmin } = await import("@/lib/admin.server");
   await requireAdmin();
