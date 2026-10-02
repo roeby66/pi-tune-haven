@@ -24,7 +24,14 @@ export function AdOverlay() {
     void trackAdEvent({ data: { adId: ad.id, eventType: "IMPRESSION", sessionId } });
     // Hard safety net: never hold the queue longer than the ad length + 5s.
     const cap = Math.min(Math.max((ad.durationSeconds ?? 30) + 5, 10), 120) * 1000;
-    const timer = window.setTimeout(() => finish("COMPLETE"), cap);
+    const timer = window.setTimeout(() => finish("ERROR"), cap);
+    // Autoplay may be blocked (e.g. unmuted video): retry muted, else bail out.
+    const el = videoRef.current;
+    el?.play().catch(() => {
+      if (!el) return;
+      el.muted = true;
+      el.play().catch(() => finish("ERROR"));
+    });
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ad?.id]);
