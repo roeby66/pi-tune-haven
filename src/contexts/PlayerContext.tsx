@@ -13,6 +13,7 @@ import { toggleFavorite as toggleFavoriteFn, recordPlay, listFavorites } from "@
 import { getNextAd, type PlayerAd } from "@/lib/ads.functions";
 import { getAdSessionId } from "@/lib/ad-session";
 import { useAuth } from "@/contexts/AuthContext";
+import { createTransitionGuard, resolveAdvance } from "@/lib/player-transition";
 
 
 type RepeatMode = "off" | "all" | "one";
@@ -62,6 +63,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const recordedRef = useRef<Set<string>>(new Set());
   const [currentAd, setCurrentAd] = useState<PlayerAd | null>(null);
   const pendingAdvanceRef = useRef(false);
+  const [loadNonce, setLoadNonce] = useState(0);
+  const guardRef = useRef(createTransitionGuard());
 
 
   const current = index === null ? null : (queue[index] ?? null);
@@ -119,52 +122,83 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
 
-  // Load new track when current changes.
+  // Keep latest index/queue in refs so transition handlers never read stale state.
+  const indexRef = useRef<number | null>(index);
+  const queueRef = useRef<Song[]>(queue);
+  indexRef.current = index;
+  queueRef.current = queue;
+
+  /**
+   * Attempt playback. If the media is not ready yet, retry once on `canplay`
+   * (single listener, replaced on each call). If the retry also fails, hand
+   * over to the playback-error recovery so the queue keeps moving.
+   */
+  const retryCleanupRef = useRef<(() => void) | null>(null);
+  const playWithRetry = useCallback(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    retryCleanupRef.current?.();
+    retryCleanupRef.current = null;
+    el.play().catch((err: unknown) => {
+      const name = (err as { name?: string } | null)?.name;
+      if (name === "NotAllowedError") {
+        // Browser blocked autoplay — needs a user gesture; reflect paused state.
+        console.warn("[player] autoplay blocked", err);
+        setPlaying(false);
+        return;
+      }
+      if (name === "AbortError") return; // superseded by a newer load/pause
+      console.warn("[player] play rejected, retrying when ready", err);
+      const gen = guardRef.current.current();
+      const onReady = () => {
+        retryCleanupRef.current = null;
+        if (guardRef.current.current() !== gen) return;
+        el.play().catch((err2: unknown) => {
+          const n2 = (err2 as { name?: string } | null)?.name;
+          console.warn("[player] retry failed", err2);
+          if (n2 === "NotAllowedError") setPlaying(false);
+          else if (n2 !== "AbortError") handleErrorRef.current();
+        });
+      };
+      el.addEventListener("canplay", onReady, { once: true });
+      retryCleanupRef.current = () => el.removeEventListener("canplay", onReady);
+    });
+  }, []);
+
+  // Load new track when current changes (or an auto-advance forces a reload).
+  const loadedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!current || !audioRef.current) return;
     const el = audioRef.current;
-    if (el.src !== current.audio) {
-      el.src = current.audio;
+    const key = `${current.id}:${loadNonce}`;
+    if (loadedKeyRef.current !== key) {
+      loadedKeyRef.current = key;
+      guardRef.current.nextGeneration();
+      if (el.src !== current.audio) el.src = current.audio;
       el.currentTime = 0;
       setProgress(0);
     }
-    if (isPlaying) {
-      const tryPlay = () => el.play().catch(() => {});
-      el.play().catch(() => {
-        // Autoplay can reject before the media is ready — retry once loaded.
-        el.addEventListener("canplay", tryPlay, { once: true });
-      });
-    }
+    if (isPlaying && el.paused) playWithRetry();
     // Record play once per song load.
     if (!recordedRef.current.has(current.id)) {
       recordedRef.current.add(current.id);
       recordPlay({ data: { songId: current.id } }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, isPlaying]);
+  }, [current?.id, loadNonce, isPlaying]);
 
   const advance = useCallback(() => {
-    setIndex((i) => {
-      if (i === null) return null;
-      if (shuffle && queue.length > 1) {
-        let n = Math.floor(Math.random() * queue.length);
-        if (n === i) n = (n + 1) % queue.length;
-        setPlaying(true);
-        return n;
-      }
-      const next = i + 1;
-      if (next >= queue.length) {
-        if (repeat === "all") {
-          setPlaying(true);
-          return 0;
-        }
-        setPlaying(false);
-        return i;
-      }
-      setPlaying(true);
-      return next;
-    });
-  }, [repeat, shuffle, queue.length]);
+    const i = indexRef.current;
+    if (i === null) return;
+    const res = resolveAdvance(i, queueRef.current.length, shuffle, repeat);
+    if (!res.play) {
+      setPlaying(false);
+      return;
+    }
+    setIndex(res.index);
+    setLoadNonce((n) => n + 1); // forces load + play even for the same track
+    setPlaying(true);
+  }, [repeat, shuffle]);
 
   const finishAd = useCallback(() => {
     setCurrentAd(null);
@@ -177,41 +211,47 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const handleEnded = useCallback(() => {
     const el = audioRef.current;
     if (!el) return;
+    if (!guardRef.current.claim()) return; // already transitioning
     if (repeat === "one") {
+      guardRef.current.nextGeneration();
       el.currentTime = 0;
-      el.play().catch(() => {});
+      playWithRetry();
       return;
     }
+    const gen = guardRef.current.current();
     // Ask the backend whether an ad slot applies. Any failure or timeout is
     // non-blocking: music simply continues to the next song.
     let settled = false;
     const proceed = () => {
       if (settled) return;
       settled = true;
+      window.clearTimeout(timer);
+      // User picked another song meanwhile — don't advance on top of it.
+      if (guardRef.current.current() !== gen) return;
       advance();
     };
     const timer = window.setTimeout(proceed, 4000);
     getNextAd({ data: { sessionId: getAdSessionId() } })
       .then((res) => {
         if (settled) return;
-        if (res?.ad) {
-          window.clearTimeout(timer);
+        if (res?.ad && guardRef.current.current() === gen) {
           settled = true;
+          window.clearTimeout(timer);
           pendingAdvanceRef.current = true;
           setCurrentAd(res.ad);
           return;
         }
-        window.clearTimeout(timer);
         proceed();
       })
-      .catch(() => {
-        window.clearTimeout(timer);
+      .catch((err) => {
+        console.warn("[player] ad lookup failed, continuing", err);
         proceed();
       });
-  }, [repeat, advance]);
+  }, [repeat, advance, playWithRetry]);
 
   // Playback errors must never strand the queue: skip to the next track.
   const handleError = useCallback(() => {
+    if (!guardRef.current.claim()) return;
     advance();
   }, [advance]);
 

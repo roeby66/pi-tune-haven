@@ -46,6 +46,9 @@ export function createTransitionGuard() {
       generation += 1;
       return generation;
     },
+    current() {
+      return generation;
+    },
     /** Returns true only for the first claim of the current generation. */
     claim() {
       if (claimed === generation) return false;
