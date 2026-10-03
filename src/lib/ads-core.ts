@@ -96,7 +96,8 @@ export function isEligible(
   now: Date = new Date(),
 ): boolean {
   if (ad.status !== "ACTIVE") return false;
-  if (!ad.video_url) return false;
+  // Uploaded ads keep only video_path (signed later); external ads use video_url.
+  if (!ad.video_url && !ad.video_path) return false;
   if (!isWithinWindow(ad, now)) return false;
   if (!tierMatches(ad.target_tier, viewer)) return false;
   if (ad.max_impressions !== null && s.impressions >= ad.max_impressions) return false;
@@ -139,4 +140,15 @@ export function selectAd(
     return a.created_at && b.created_at ? a.created_at.localeCompare(b.created_at) : 0;
   });
   return sorted[0] ?? null;
+}
+
+/** Diagnostic: first rule that rejects an ad, or null when eligible. */
+export function ineligibleReason(ad: AdRow, viewer: ViewerTier, s: AdStatsSlice, now: Date = new Date()): string | null {
+  if (ad.status !== "ACTIVE") return "not_active";
+  if (!ad.video_url && !ad.video_path) return "no_video";
+  if (!isWithinWindow(ad, now)) return "outside_dates";
+  if (!tierMatches(ad.target_tier, viewer)) return "tier_mismatch";
+  if (ad.max_impressions !== null && s.impressions >= ad.max_impressions) return "max_impressions";
+  if (!frequencyAllows(ad, s)) return "frequency";
+  return null;
 }

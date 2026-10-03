@@ -2,6 +2,7 @@
 import {
   selectAd,
   normalizeTier,
+  ineligibleReason,
   type AdRow,
   type AdStatsSlice,
   type ViewerTier,
@@ -134,11 +135,25 @@ export async function pickNextAd(sessionId: string | null): Promise<AdRow | null
     .order("sort_order", { ascending: true })
     .limit(50);
   const ads = (data ?? []) as unknown as AdRow[];
-  if (ads.length === 0) return null;
+  if (ads.length === 0) {
+    console.info("[ads] no eligible ad: no ACTIVE ads for tier", viewer.tier);
+    return null;
+  }
   const { stats, recent } = await loadStats(ads, viewer, sessionId);
   const chosen = selectAd(ads, viewer.tier, stats, recent);
-  if (!chosen) return null;
-  return signAdMedia(chosen);
+  if (!chosen) {
+    console.info(
+      "[ads] no eligible ad",
+      ads.map((a) => ({ id: a.id, reason: stats[a.id] ? ineligibleReason(a, viewer.tier, stats[a.id]) : "no_stats" })),
+    );
+    return null;
+  }
+  const signed = await signAdMedia(chosen);
+  if (!/^https?:\/\//i.test(signed.video_url)) {
+    console.warn("[ads] invalid video URL, skipping ad", chosen.id, chosen.video_path);
+    return null;
+  }
+  return signed;
 }
 
 export async function recordAdEvent(input: {
