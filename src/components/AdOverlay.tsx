@@ -13,6 +13,7 @@ export function AdOverlay() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const doneRef = useRef(false);
+  const timerRef = useRef<number | undefined>(undefined);
 
   const ad = currentAd;
 
@@ -24,10 +25,7 @@ export function AdOverlay() {
     void trackAdEvent({ data: { adId: ad.id, eventType: "IMPRESSION", sessionId } });
     // Hard safety net: never hold the queue longer than the ad length + 5s.
     const cap = Math.min(Math.max((ad.durationSeconds ?? 30) + 5, 10), 120) * 1000;
-    const timer = window.setTimeout(() => {
-      console.warn("[ads] skipped: safety timeout", ad.id);
-      finish("ERROR");
-    }, cap);
+    armTimeout(cap);
     // Autoplay may be blocked (e.g. unmuted video): retry muted, else bail out.
     const el = videoRef.current;
     console.info("[ads] showing ad", ad.id, ad.videoUrl.slice(0, 80));
@@ -40,11 +38,19 @@ export function AdOverlay() {
         finish("ERROR");
       });
     });
-    return () => window.clearTimeout(timer);
+    return () => window.clearTimeout(timerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ad?.id]);
 
   if (!ad) return null;
+
+  function armTimeout(ms: number) {
+    window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => {
+      console.warn("[ads] skipped: safety timeout", ad!.id);
+      finish("ERROR");
+    }, ms);
+  }
 
   function finish(event: "COMPLETE" | "ERROR" | "SKIP") {
     if (doneRef.current) return;
@@ -58,6 +64,7 @@ export function AdOverlay() {
         sessionId: getAdSessionId(),
       },
     });
+    window.clearTimeout(timerRef.current);
     finishAd();
   }
 
@@ -80,6 +87,11 @@ export function AdOverlay() {
             onTimeUpdate={(e) => {
               const v = e.currentTarget;
               if (v.duration) setRemaining(Math.max(0, Math.ceil(v.duration - v.currentTime)));
+            }}
+            onLoadedMetadata={(e) => {
+              // Real length known: safety net = video length + 10s (max 10 min).
+              const d = e.currentTarget.duration;
+              if (Number.isFinite(d) && d > 0) armTimeout(Math.min(d + 10, 600) * 1000);
             }}
             onEnded={() => finish("COMPLETE")}
             onError={(e) => {
