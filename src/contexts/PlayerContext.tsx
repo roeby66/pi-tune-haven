@@ -230,10 +230,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       if (guardRef.current.current() !== gen) return;
       advance();
     };
-    const timer = window.setTimeout(proceed, 4000);
+    console.info("[player] song ended, looking up ad");
+    const timer = window.setTimeout(() => { console.warn("[player] ad lookup timed out, continuing"); proceed(); }, 4000);
     getNextAd({ data: { sessionId: getAdSessionId() } })
       .then((res) => {
         if (settled) return;
+        if (!res?.ad) console.info("[player] no eligible ad, continuing");
         if (res?.ad && guardRef.current.current() === gen) {
           settled = true;
           window.clearTimeout(timer);

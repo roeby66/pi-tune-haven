@@ -24,13 +24,21 @@ export function AdOverlay() {
     void trackAdEvent({ data: { adId: ad.id, eventType: "IMPRESSION", sessionId } });
     // Hard safety net: never hold the queue longer than the ad length + 5s.
     const cap = Math.min(Math.max((ad.durationSeconds ?? 30) + 5, 10), 120) * 1000;
-    const timer = window.setTimeout(() => finish("ERROR"), cap);
+    const timer = window.setTimeout(() => {
+      console.warn("[ads] skipped: safety timeout", ad.id);
+      finish("ERROR");
+    }, cap);
     // Autoplay may be blocked (e.g. unmuted video): retry muted, else bail out.
     const el = videoRef.current;
-    el?.play().catch(() => {
+    console.info("[ads] showing ad", ad.id, ad.videoUrl.slice(0, 80));
+    el?.play().catch((err) => {
       if (!el) return;
+      console.warn("[ads] unmuted autoplay blocked, retrying muted", err);
       el.muted = true;
-      el.play().catch(() => finish("ERROR"));
+      el.play().catch((err2) => {
+        console.warn("[ads] skipped: video playback blocked", ad.id, err2);
+        finish("ERROR");
+      });
     });
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,7 +82,10 @@ export function AdOverlay() {
               if (v.duration) setRemaining(Math.max(0, Math.ceil(v.duration - v.currentTime)));
             }}
             onEnded={() => finish("COMPLETE")}
-            onError={() => finish("ERROR")}
+            onError={(e) => {
+              console.warn("[ads] skipped: playback error", ad.id, e.currentTarget.error?.code, e.currentTarget.error?.message);
+              finish("ERROR");
+            }}
           />
           <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
             Ad{remaining !== null ? ` · ${remaining}s` : ""}
