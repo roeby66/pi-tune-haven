@@ -11,6 +11,8 @@ import {
   Repeat,
   Repeat1,
   Shuffle,
+  SkipBack,
+  SkipForward,
   Square,
   Volume2,
 } from "lucide-react";
@@ -32,7 +34,11 @@ export function MusicPlayer() {
     repeat,
     toggleShuffle,
     cycleRepeat,
+    next,
+    previous,
+    entitlements,
   } = usePlayer();
+  const locked = !entitlements.canSkip;
   const [showLyrics, setShowLyrics] = useState(false);
 
   if (!current) return null;
@@ -72,10 +78,21 @@ export function MusicPlayer() {
           <div className="flex items-center gap-1">
             <button
               onClick={toggleShuffle}
-              className={`hidden rounded-full p-2 sm:block ${shuffle ? "text-primary" : "text-muted-foreground"}`}
+              disabled={!entitlements.canToggleShuffle}
+              title={entitlements.canToggleShuffle ? "Shuffle" : "Shuffle is always on for Free"}
+              className={`hidden rounded-full p-2 disabled:cursor-not-allowed sm:block ${shuffle ? "text-primary" : "text-muted-foreground"}`}
               aria-label="Shuffle"
             >
               <Shuffle className="h-4 w-4" />
+            </button>
+            <button
+              onClick={previous}
+              disabled={locked}
+              title={locked ? "Upgrade to Standard to skip songs" : "Previous"}
+              className="rounded-full p-2 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground"
+              aria-label="Previous"
+            >
+              <SkipBack className="h-4 w-4" />
             </button>
             <button
               onClick={togglePlay}
@@ -84,7 +101,15 @@ export function MusicPlayer() {
             >
               {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
             </button>
-
+            <button
+              onClick={next}
+              disabled={locked}
+              title={locked ? "Upgrade to Standard to skip songs" : "Next"}
+              className="rounded-full p-2 text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground"
+              aria-label="Next"
+            >
+              <SkipForward className="h-4 w-4" />
+            </button>
             <button
               onClick={stop}
               className="hidden rounded-full p-2 text-muted-foreground hover:text-foreground sm:block"
