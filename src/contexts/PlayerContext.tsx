@@ -14,6 +14,8 @@ import { getNextAd, type PlayerAd } from "@/lib/ads.functions";
 import { getAdSessionId } from "@/lib/ad-session";
 import { useAuth } from "@/contexts/AuthContext";
 import { createTransitionGuard, resolveAdvance } from "@/lib/player-transition";
+import { FREE_ENTITLEMENTS, type PlayerEntitlements } from "@/lib/player-entitlements";
+import { getPlayerEntitlements } from "@/lib/player-entitlements.functions";
 
 
 type RepeatMode = "off" | "all" | "one";
@@ -42,6 +44,7 @@ interface PlayerContextValue {
   toggleFavorite: (id: string) => Promise<void>;
   isFavorite: (id: string) => boolean;
   currentAd: PlayerAd | null;
+  entitlements: PlayerEntitlements;
   finishAd: () => void;
 
 }
@@ -65,6 +68,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const pendingAdvanceRef = useRef(false);
   const [loadNonce, setLoadNonce] = useState(0);
   const guardRef = useRef(createTransitionGuard());
+  const [entitlements, setEntitlements] = useState<PlayerEntitlements>(FREE_ENTITLEMENTS);
+  // Server decides; re-resolved on every sign-in/out and page load.
+  useEffect(() => {
+    setEntitlements(FREE_ENTITLEMENTS);
+    if (!user) return;
+    let alive = true;
+    getPlayerEntitlements()
+      .then((e) => { if (alive) setEntitlements(e); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [user]);
+  const effectiveShuffle = entitlements.forceShuffle || (entitlements.canToggleShuffle && shuffle);
 
 
   const current = index === null ? null : (queue[index] ?? null);
@@ -190,7 +205,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const advance = useCallback(() => {
     const i = indexRef.current;
     if (i === null) return;
-    const res = resolveAdvance(i, queueRef.current.length, shuffle, repeat);
+    const res = resolveAdvance(i, queueRef.current.length, effectiveShuffle, repeat);
     if (!res.play) {
       setPlaying(false);
       return;
@@ -198,7 +213,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIndex(res.index);
     setLoadNonce((n) => n + 1); // forces load + play even for the same track
     setPlaying(true);
-  }, [repeat, shuffle]);
+  }, [repeat, effectiveShuffle]);
 
   const finishAd = useCallback(() => {
     setCurrentAd(null);
@@ -298,9 +313,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const next = useCallback(() => {
+    if (!entitlements.canSkip) return;
     setIndex((i) => {
       if (i === null || queue.length === 0) return i;
-      if (shuffle) {
+      if (effectiveShuffle) {
         let n = Math.floor(Math.random() * queue.length);
         if (n === i && queue.length > 1) n = (n + 1) % queue.length;
         return n;
@@ -308,9 +324,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return (i + 1) % queue.length;
     });
     setPlaying(true);
-  }, [queue.length, shuffle]);
+  }, [queue.length, effectiveShuffle, entitlements.canSkip]);
 
   const previous = useCallback(() => {
+    if (!entitlements.canSkip) return;
     const el = audioRef.current;
     if (el && el.currentTime > 3) {
       el.currentTime = 0;
@@ -321,7 +338,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return (i - 1 + queue.length) % queue.length;
     });
     setPlaying(true);
-  }, [queue.length]);
+  }, [queue.length, entitlements.canSkip]);
 
   const seek = useCallback((fraction: number) => {
     const el = audioRef.current;
@@ -333,7 +350,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setVolumeState(Math.max(0, Math.min(1, v)));
   }, []);
 
-  const toggleShuffle = useCallback(() => setShuffle((s) => !s), []);
+  const toggleShuffle = useCallback(() => {
+    if (!entitlements.canToggleShuffle) return;
+    setShuffle((s) => !s);
+  }, [entitlements.canToggleShuffle]);
   const cycleRepeat = useCallback(
     () => setRepeat((r) => (r === "off" ? "all" : r === "all" ? "one" : "off")),
     [],
@@ -376,7 +396,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       progress,
       duration,
       volume,
-      shuffle,
+      shuffle: effectiveShuffle,
       repeat,
       favorites,
       audioRef,
@@ -394,7 +414,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       isFavorite,
       currentAd,
       finishAd,
-
+      entitlements,
     }),
     [
       current,
@@ -403,7 +423,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       progress,
       duration,
       volume,
-      shuffle,
+      effectiveShuffle,
       repeat,
       favorites,
       playSong,
@@ -420,7 +440,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       isFavorite,
       currentAd,
       finishAd,
-
+      entitlements,
     ],
   );
 
