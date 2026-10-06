@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createTransitionGuard, resolveAdvance } from "@/lib/player-transition";
 import { FREE_ENTITLEMENTS, type PlayerEntitlements } from "@/lib/player-entitlements";
 import { getPlayerEntitlements } from "@/lib/player-entitlements.functions";
+import { MEMBERSHIP_CHANGED_EVENT } from "@/lib/membership-events";
 
 
 type RepeatMode = "off" | "all" | "one";
@@ -69,15 +70,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [loadNonce, setLoadNonce] = useState(0);
   const guardRef = useRef(createTransitionGuard());
   const [entitlements, setEntitlements] = useState<PlayerEntitlements>(FREE_ENTITLEMENTS);
-  // Server decides; re-resolved on every sign-in/out and page load.
+  // Server decides; re-resolved on sign-in/out and whenever membership changes.
   useEffect(() => {
     setEntitlements(FREE_ENTITLEMENTS);
     if (!user) return;
     let alive = true;
-    getPlayerEntitlements()
-      .then((e) => { if (alive) setEntitlements(e); })
-      .catch(() => {});
-    return () => { alive = false; };
+    const refresh = () => {
+      getPlayerEntitlements()
+        .then((e) => { if (alive) setEntitlements(e); })
+        .catch((err) => console.warn("[player] entitlement refresh failed", err));
+    };
+    refresh();
+    window.addEventListener(MEMBERSHIP_CHANGED_EVENT, refresh);
+    return () => {
+      alive = false;
+      window.removeEventListener(MEMBERSHIP_CHANGED_EVENT, refresh);
+    };
   }, [user]);
   const effectiveShuffle = entitlements.forceShuffle || (entitlements.canToggleShuffle && shuffle);
 

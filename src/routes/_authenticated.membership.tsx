@@ -30,6 +30,7 @@ import {
   payDiagError,
   payDiagFinish,
 } from "@/lib/payment-diagnostics";
+import { notifyMembershipChanged } from "@/lib/membership-events";
 
 
 export const Route = createFileRoute("/_authenticated/membership")({
@@ -120,7 +121,8 @@ function MembershipPage() {
           try {
             await complete.mutateAsync({ paymentId, txid });
             payDiagStage("ON_READY_FOR_SERVER_COMPLETION_COMPLETED", { paymentId });
-            qc.invalidateQueries({ queryKey: ["membership"] });
+            await qc.invalidateQueries({ queryKey: ["membership"] });
+            notifyMembershipChanged();
             setFlow({ kind: "success", plan });
             payDiagStage("PAYMENT_COMPLETED", { paymentId, txid });
             payDiagFinish("SUCCESS");

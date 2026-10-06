@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2, Play } from "lucide-react";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { trackAdClick, trackAdEvent } from "@/lib/ads.functions";
+import { trackAdEvent } from "@/lib/ads.functions";
 import { getAdSessionId } from "@/lib/ad-session";
+import { nextAdPlaybackPhase, type AdPlaybackPhase } from "@/lib/ad-playback";
+import { Button } from "@/components/ui/button";
 
 /**
  * House-ad playback overlay. Any failure here immediately hands control back
@@ -11,54 +13,20 @@ import { getAdSessionId } from "@/lib/ad-session";
 export function AdOverlay() {
   const { currentAd, finishAd } = usePlayer();
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [remaining, setRemaining] = useState<number | null>(null);
+  const [phase, setPhase] = useState<AdPlaybackPhase>("loading");
   const doneRef = useRef(false);
+  const startedRef = useRef(false);
   const timerRef = useRef<number | undefined>(undefined);
 
   const ad = currentAd;
 
-  useEffect(() => {
-    doneRef.current = false;
-    setRemaining(ad?.durationSeconds ?? null);
-    if (!ad) return;
-    const sessionId = getAdSessionId();
-    void trackAdEvent({ data: { adId: ad.id, eventType: "IMPRESSION", sessionId } });
-    // Hard safety net: never hold the queue longer than the ad length + 5s.
-    const cap = Math.min(Math.max((ad.durationSeconds ?? 30) + 5, 10), 120) * 1000;
-    armTimeout(cap);
-    // Autoplay may be blocked (e.g. unmuted video): retry muted, else bail out.
-    const el = videoRef.current;
-    console.info("[ads] showing ad", ad.id, ad.videoUrl.slice(0, 80));
-    el?.play().catch((err) => {
-      if (!el) return;
-      console.warn("[ads] unmuted autoplay blocked, retrying muted", err);
-      el.muted = true;
-      el.play().catch((err2) => {
-        console.warn("[ads] skipped: video playback blocked", ad.id, err2);
-        finish("ERROR");
-      });
-    });
-    return () => window.clearTimeout(timerRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ad?.id]);
-
-  if (!ad) return null;
-
-  function armTimeout(ms: number) {
-    window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => {
-      console.warn("[ads] skipped: safety timeout", ad!.id);
-      finish("ERROR");
-    }, ms);
-  }
-
-  function finish(event: "COMPLETE" | "ERROR" | "SKIP") {
+  const finish = useCallback((event: "COMPLETE" | "ERROR") => {
     if (doneRef.current) return;
     doneRef.current = true;
     const el = videoRef.current;
     void trackAdEvent({
       data: {
-        adId: ad!.id,
+        adId: ad?.id ?? "",
         eventType: event,
         playedSeconds: el ? Math.round(el.currentTime) : undefined,
         sessionId: getAdSessionId(),
@@ -66,79 +34,105 @@ export function AdOverlay() {
     });
     window.clearTimeout(timerRef.current);
     finishAd();
-  }
+  }, [ad?.id, finishAd]);
+
+  const armStallWatchdog = useCallback((ms = 30_000) => {
+    window.clearTimeout(timerRef.current);
+    timerRef.current = window.setTimeout(() => {
+      console.warn("[ads] skipped: safety timeout without video progress", ad?.id);
+      finish("ERROR");
+    }, ms);
+  }, [ad?.id, finish]);
+
+  const tryPlayback = useCallback(async () => {
+    const el = videoRef.current;
+    if (!el) return;
+    setPhase("loading");
+    armStallWatchdog();
+    try {
+      await el.play();
+    } catch (err) {
+      console.warn("[ads] audible autoplay blocked, retrying muted", err);
+      el.muted = true;
+      try {
+        await el.play();
+      } catch (mutedError) {
+        console.warn("[ads] video playback blocked; waiting for user gesture", mutedError);
+        window.clearTimeout(timerRef.current);
+        setPhase("blocked");
+      }
+    }
+  }, [armStallWatchdog]);
+
+  useEffect(() => {
+    doneRef.current = false;
+    startedRef.current = false;
+    setPhase("loading");
+    if (!ad) return;
+    const sessionId = getAdSessionId();
+    void trackAdEvent({ data: { adId: ad.id, eventType: "IMPRESSION", sessionId } });
+    console.info("[ads] showing ad", ad.id, ad.videoUrl.slice(0, 80));
+    void tryPlayback();
+    return () => window.clearTimeout(timerRef.current);
+  }, [ad, tryPlayback]);
+
+  if (!ad) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/95 p-4 backdrop-blur">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-card shadow-purple">
-        <div className="relative aspect-video bg-black">
-          <video
-            ref={videoRef}
-            src={ad.videoUrl}
-            poster={ad.thumbnailUrl ?? undefined}
-            autoPlay
-            playsInline
-            className="h-full w-full object-contain"
-            onPlay={() =>
-              void trackAdEvent({
-                data: { adId: ad.id, eventType: "START", sessionId: getAdSessionId() },
-              })
-            }
-            onTimeUpdate={(e) => {
-              const v = e.currentTarget;
-              if (v.duration) setRemaining(Math.max(0, Math.ceil(v.duration - v.currentTime)));
-            }}
-            onLoadedMetadata={(e) => {
-              // Real length known: safety net = video length + 10s (max 10 min).
-              const d = e.currentTarget.duration;
-              if (Number.isFinite(d) && d > 0) armTimeout(Math.min(d + 10, 600) * 1000);
-            }}
-            onEnded={() => finish("COMPLETE")}
-            onError={(e) => {
-              console.warn("[ads] skipped: playback error", ad.id, e.currentTarget.error?.code, e.currentTarget.error?.message);
-              finish("ERROR");
-            }}
-          />
-          <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary">
-            Ad{remaining !== null ? ` · ${remaining}s` : ""}
-          </span>
+    <div className="fixed inset-0 z-[60] grid place-items-center overflow-hidden bg-background" role="dialog" aria-label="Video advertisement">
+      <video
+        ref={videoRef}
+        src={ad.videoUrl}
+        poster={ad.thumbnailUrl ?? undefined}
+        autoPlay
+        playsInline
+        preload="auto"
+        className="h-full w-full object-cover"
+        onLoadStart={() => setPhase((current) => nextAdPlaybackPhase(current, "loadstart"))}
+        onPlay={() => {
+          setPhase((current) => nextAdPlaybackPhase(current, "play"));
+          if (startedRef.current) return;
+          startedRef.current = true;
+          void trackAdEvent({
+            data: { adId: ad.id, eventType: "START", sessionId: getAdSessionId() },
+          });
+        }}
+        onPlaying={() => {
+          setPhase((current) => nextAdPlaybackPhase(current, "playing"));
+          armStallWatchdog();
+        }}
+        onWaiting={() => {
+          console.info("[ads] video buffering", ad.id);
+          setPhase((current) => nextAdPlaybackPhase(current, "waiting"));
+          armStallWatchdog();
+        }}
+        onStalled={() => {
+          console.warn("[ads] video stalled", ad.id);
+          setPhase((current) => nextAdPlaybackPhase(current, "stalled"));
+          armStallWatchdog();
+        }}
+        onTimeUpdate={() => armStallWatchdog()}
+        onEnded={() => {
+          console.info("[ads] video ended", ad.id);
+          finish("COMPLETE");
+        }}
+        onError={(e) => {
+          console.warn("[ads] skipped: playback error", ad.id, e.currentTarget.error?.code, e.currentTarget.error?.message);
+          finish("ERROR");
+        }}
+      />
+      {(phase === "loading" || phase === "waiting") && (
+        <div className="pointer-events-none absolute inset-0 grid place-items-center bg-background/20" aria-label="Loading video">
+          <Loader2 className="h-9 w-9 animate-spin text-foreground drop-shadow-lg" />
         </div>
-        <div className="space-y-2 p-4">
-          <p className="text-sm font-bold">{ad.title}</p>
-          {ad.description && (
-            <p className="text-xs text-muted-foreground">{ad.description}</p>
-          )}
-          <div className="flex items-center justify-between gap-2 pt-1">
-            {ad.clickUrl ? (
-              <a
-                href={ad.clickUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() =>
-                  void trackAdClick({ data: { adId: ad.id, sessionId: getAdSessionId() } })
-                }
-                className="inline-flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
-              >
-                Learn more <ExternalLink className="h-3 w-3" />
-              </a>
-            ) : (
-              <span />
-            )}
-            {ad.skippable ? (
-              <button
-                onClick={() => finish("SKIP")}
-                className="rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-muted-foreground"
-              >
-                Skip ad
-              </button>
-            ) : (
-              <span className="text-[11px] text-muted-foreground">
-                Music continues after this ad
-              </span>
-            )}
-          </div>
+      )}
+      {phase === "blocked" && (
+        <div className="absolute inset-0 grid place-items-center bg-background/50 p-6 backdrop-blur-sm">
+          <Button onClick={() => void tryPlayback()} size="lg" className="rounded-full" aria-label="Play video">
+            <Play className="h-5 w-5" /> Play
+          </Button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
