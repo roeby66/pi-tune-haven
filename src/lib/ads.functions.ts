@@ -29,7 +29,7 @@ export const getNextAd = createServerFn({ method: "GET" })
           thumbnailUrl: ad.thumbnail_url,
           durationSeconds: ad.duration_seconds,
           clickUrl: ad.click_url,
-          // House ads are non-skippable; a countdown is shown instead.
+          // House ads are non-skippable and complete only when the video ends.
           skippable: false,
         },
       };
