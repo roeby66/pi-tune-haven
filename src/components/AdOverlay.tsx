@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Play } from "lucide-react";
 import { usePlayer } from "@/contexts/PlayerContext";
-import { trackAdEvent } from "@/lib/ads.functions";
+import { trackAdClick, trackAdEvent } from "@/lib/ads.functions";
 import { getAdSessionId } from "@/lib/ad-session";
 import { nextAdPlaybackPhase, type AdPlaybackPhase } from "@/lib/ad-playback";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,9 @@ export function AdOverlay() {
     console.info("[ads] showing ad", ad.id, ad.videoUrl.slice(0, 80));
     void tryPlayback();
     return () => window.clearTimeout(timerRef.current);
-  }, [ad, tryPlayback]);
+    // The ad identity owns this lifecycle. Context updates must not restart it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ad?.id]);
 
   if (!ad) return null;
 
@@ -88,6 +90,11 @@ export function AdOverlay() {
         playsInline
         preload="auto"
         className="h-full w-full object-cover"
+        onClick={() => {
+          if (!ad.clickUrl || phase === "blocked") return;
+          void trackAdClick({ data: { adId: ad.id, sessionId: getAdSessionId() } });
+          window.open(ad.clickUrl, "_blank", "noopener,noreferrer");
+        }}
         onLoadStart={() => setPhase((current) => nextAdPlaybackPhase(current, "loadstart"))}
         onPlay={() => {
           setPhase((current) => nextAdPlaybackPhase(current, "play"));
@@ -128,7 +135,16 @@ export function AdOverlay() {
       )}
       {phase === "blocked" && (
         <div className="absolute inset-0 grid place-items-center bg-background/50 p-6 backdrop-blur-sm">
-          <Button onClick={() => void tryPlayback()} size="lg" className="rounded-full" aria-label="Play video">
+          <Button
+            onClick={() => {
+              const el = videoRef.current;
+              if (el) el.muted = false;
+              void tryPlayback();
+            }}
+            size="lg"
+            className="rounded-full"
+            aria-label="Play video"
+          >
             <Play className="h-5 w-5" /> Play
           </Button>
         </div>

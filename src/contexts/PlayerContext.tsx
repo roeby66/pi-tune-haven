@@ -81,10 +81,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         .catch((err) => console.warn("[player] entitlement refresh failed", err));
     };
     refresh();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
     window.addEventListener(MEMBERSHIP_CHANGED_EVENT, refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       alive = false;
       window.removeEventListener(MEMBERSHIP_CHANGED_EVENT, refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [user]);
   const effectiveShuffle = entitlements.forceShuffle || (entitlements.canToggleShuffle && shuffle);
