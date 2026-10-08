@@ -3,7 +3,7 @@ import { Loader2, Play } from "lucide-react";
 import { usePlayer } from "@/contexts/PlayerContext";
 import { trackAdClick, trackAdEvent } from "@/lib/ads.functions";
 import { getAdSessionId } from "@/lib/ad-session";
-import { nextAdPlaybackPhase, type AdPlaybackPhase } from "@/lib/ad-playback";
+import { AD_VIDEO_CLASS, classifyPlayRejection, nextAdPlaybackPhase, type AdPlaybackPhase } from "@/lib/ad-playback";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -44,35 +44,57 @@ export function AdOverlay() {
     }, ms);
   }, [ad?.id, finish]);
 
-  const tryPlayback = useCallback(async () => {
+  // Attempt play() only on a ready element; success is confirmed solely by the
+  // real `playing` event. Rejections retry muted, then show the Play fallback.
+  const playingRef = useRef(false);
+  const attemptingRef = useRef(false);
+  const tryPlayback = useCallback(async (fromGesture = false) => {
     const el = videoRef.current;
-    if (!el) return;
-    setPhase("loading");
+    if (!el || playingRef.current || attemptingRef.current) return;
+    attemptingRef.current = true;
+    if (!fromGesture) setPhase((p) => (p === "blocked" ? p : "loading"));
     armStallWatchdog();
     try {
       await el.play();
     } catch (err) {
-      console.warn("[ads] audible autoplay blocked, retrying muted", err);
-      el.muted = true;
-      try {
-        await el.play();
-      } catch (mutedError) {
-        console.warn("[ads] video playback blocked; waiting for user gesture", mutedError);
+      const action = classifyPlayRejection(err, el.muted);
+      console.warn("[ads] play() rejected", action, err);
+      if (action === "retry-muted") {
+        el.muted = true;
+        try {
+          await el.play();
+        } catch (mutedError) {
+          const second = classifyPlayRejection(mutedError, true);
+          if (second === "blocked") {
+            console.warn("[ads] video playback blocked; showing Play button", mutedError);
+            window.clearTimeout(timerRef.current);
+            setPhase("blocked");
+          }
+        }
+      } else if (action === "blocked") {
         window.clearTimeout(timerRef.current);
         setPhase("blocked");
       }
+      // wait-ready: the next canplay event retries.
+    } finally {
+      attemptingRef.current = false;
     }
   }, [armStallWatchdog]);
 
   useEffect(() => {
     doneRef.current = false;
     startedRef.current = false;
+    playingRef.current = false;
+    attemptingRef.current = false;
     setPhase("loading");
     if (!ad) return;
     const sessionId = getAdSessionId();
     void trackAdEvent({ data: { adId: ad.id, eventType: "IMPRESSION", sessionId } });
     console.info("[ads] showing ad", ad.id, ad.videoUrl.slice(0, 80));
-    void tryPlayback();
+    armStallWatchdog();
+    const el = videoRef.current;
+    // Already buffered (cached) — try right away; otherwise canplay triggers it.
+    if (el && el.readyState >= 3) void tryPlayback();
     return () => window.clearTimeout(timerRef.current);
     // The ad identity owns this lifecycle. Context updates must not restart it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,21 +103,32 @@ export function AdOverlay() {
   if (!ad) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center overflow-hidden bg-background" role="dialog" aria-label="Video advertisement">
+    <div
+      className="fixed inset-0 z-[60] flex h-[100dvh] w-screen items-center justify-center overflow-hidden bg-background"
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+        paddingLeft: "env(safe-area-inset-left)",
+        paddingRight: "env(safe-area-inset-right)",
+      }}
+      role="dialog"
+      aria-label="Video advertisement"
+    >
       <video
         ref={videoRef}
         src={ad.videoUrl}
         poster={ad.thumbnailUrl ?? undefined}
-        autoPlay
         playsInline
         preload="auto"
-        className="h-full w-full object-cover"
+        className={AD_VIDEO_CLASS}
         onClick={() => {
           if (!ad.clickUrl || phase === "blocked") return;
           void trackAdClick({ data: { adId: ad.id, sessionId: getAdSessionId() } });
           window.open(ad.clickUrl, "_blank", "noopener,noreferrer");
         }}
         onLoadStart={() => setPhase((current) => nextAdPlaybackPhase(current, "loadstart"))}
+        onLoadedMetadata={() => armStallWatchdog()}
+        onCanPlay={() => { void tryPlayback(); }}
         onPlay={() => {
           setPhase((current) => nextAdPlaybackPhase(current, "play"));
           if (startedRef.current) return;
@@ -105,8 +138,15 @@ export function AdOverlay() {
           });
         }}
         onPlaying={() => {
+          playingRef.current = true;
           setPhase((current) => nextAdPlaybackPhase(current, "playing"));
           armStallWatchdog();
+        }}
+        onPause={(e) => {
+          if (e.currentTarget.ended || doneRef.current) return;
+          playingRef.current = false;
+          window.clearTimeout(timerRef.current);
+          setPhase("blocked");
         }}
         onWaiting={() => {
           console.info("[ads] video buffering", ad.id);
@@ -118,7 +158,7 @@ export function AdOverlay() {
           setPhase((current) => nextAdPlaybackPhase(current, "stalled"));
           armStallWatchdog();
         }}
-        onTimeUpdate={() => armStallWatchdog()}
+        onTimeUpdate={() => { if (playingRef.current) armStallWatchdog(); }}
         onEnded={() => {
           console.info("[ads] video ended", ad.id);
           finish("COMPLETE");
@@ -139,7 +179,7 @@ export function AdOverlay() {
             onClick={() => {
               const el = videoRef.current;
               if (el) el.muted = false;
-              void tryPlayback();
+              void tryPlayback(true);
             }}
             size="lg"
             className="rounded-full"
